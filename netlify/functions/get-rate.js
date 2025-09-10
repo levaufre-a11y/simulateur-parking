@@ -4,7 +4,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 exports.handler = async function(event, context) {
-  const url = 'https://www.meurtaux.com/credit-immobilier/barometre-des-taux.html';
+  const url = 'https://www.meilleurtaux.com/credit-immobilier/barometre-des-taux.html';
   console.log('--- Lancement de la récupération du taux ---');
 
   try {
