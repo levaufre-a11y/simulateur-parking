@@ -43,6 +43,16 @@
         .highlight-year td, .highlight-year th {
             background-color: #e0f2fe; /* sky-100 */
         }
+
+        /* NOUVEAU : Positionnement de l'infobulle sur mobile */
+        @media (max-width: 767px) {
+            .info-tooltip {
+                left: auto;
+                right: 0;
+                transform: translateX(0);
+                width: 220px; /* Largeur légèrement réduite pour les petits écrans */
+            }
+        }
         /* Styles pour l'impression */
         @media print {
             body {
@@ -875,46 +885,34 @@
         }
         
         // Remplacer l'ancienne fonction fetchExcellentRate par celle-ci
-async function fetchExcellentRate() {
+function fetchExcellentRate() {
     const loanRateInput = formElements.loanRate;
     const loanRateStatus = document.getElementById('loan-rate-status');
-    const fallbackRate = 3.30;
-    
-    // Assurez-vous que l'URL est correcte
-    const apiEndpoint = 'https://parking-investment-app.netlify.app/.netlify/functions/get-rate'; 
 
-    loanRateStatus.textContent = 'MàJ...';
+    // --- METTEZ À JOUR LES TAUX MANUELLEMENT ICI ---
+    // Structure contenant les taux par durée d'emprunt
+    const excellentRatesByDuration = {
+        10: 2.95, // Taux pour 10 ans
+        15: 3.05, // Taux pour 15 ans
+        20: 3.15, // Taux pour 20 ans
+        25: 3.25, // Taux pour 25 ans
+        'default': 3.15 // Taux par défaut si la durée ne correspond pas
+    };
+    // -----------------------------------------
 
-    try {
-        const response = await fetch(apiEndpoint);
-        const data = await response.json();
-        
-        if (!response.ok || !data.rate) {
-             console.error('Erreur reçue de la fonction Netlify:', data.details || 'Pas de taux valide.');
-             throw new Error(data.error || 'Réponse invalide');
-        }
-        
-        if (!formElements.toggleLoanRate.checked) {
-            loanRateInput.value = data.rate.toFixed(2);
-            runSimulation();
-        }
-        loanRateStatus.textContent = 'Auto ✓';
-        console.log('Taux mis à jour avec succès via l\'API :', data.rate);
+    // Récupérer la durée actuelle depuis le formulaire
+    const duration = parseInt(formElements.loanDuration.value, 10) || 0;
 
-    } catch (error) {
-        console.error("Échec de l'appel à la fonction Netlify. Utilisation du taux de secours.", error);
-        if (!formElements.toggleLoanRate.checked) {
-            loanRateInput.value = fallbackRate;
-        }
-        loanRateStatus.textContent = 'Erreur';
-        setTimeout(() => {
-            if (loanRateStatus.textContent === 'Erreur') {
-                loanRateStatus.textContent = 'Auto';
-            }
-        }, 3000);
+    // Chercher le taux correspondant à la durée, ou utiliser le taux par défaut
+    const currentExcellentRate = excellentRatesByDuration[duration] || excellentRatesByDuration['default'];
+
+    loanRateStatus.textContent = 'Auto'; 
+
+    // Mettre à jour le champ uniquement si le mode manuel n'est pas activé
+    if (!formElements.toggleLoanRate.checked) {
+        loanRateInput.value = currentExcellentRate;
     }
 }
-
 
         document.addEventListener('DOMContentLoaded', () => {
             if ('serviceWorker' in navigator) {
@@ -984,6 +982,7 @@ async function fetchExcellentRate() {
                     el.addEventListener('change', runSimulation);
                 }
             });
+            formElements.loanDuration.addEventListener('input', fetchExcellentRate);
             formElements.purchasePrice.addEventListener('input', applyFormatting);
             formElements.personalContribution.addEventListener('input', applyFormatting);
             formElements.notaryFees.addEventListener('input', applyFormatting);
