@@ -4,8 +4,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 exports.handler = async function(event, context) {
-  const url = 'https://www.meilleurtaux.com/credit-immobilier/barometre-des-taux.html';
-  console.log('--- Début de la récupération du taux ---');
+  const url = 'https://www.meurtaux.com/credit-immobilier/barometre-des-taux.html';
+  console.log('--- Lancement de la récupération du taux ---');
 
   try {
     const { data } = await axios.get(url, {
@@ -15,32 +15,30 @@ exports.handler = async function(event, context) {
     });
     
     const $ = cheerio.load(data);
-    
     let excellentRate = null;
     
-    // On cible le tableau qui contient les baromètres
-    const ratesTable = $('#static-rates-table');
-    if (ratesTable.length === 0) {
-      console.error('Erreur Critique: Le tableau des taux (#static-rates-table) est introuvable.');
-      throw new Error("Le tableau des taux principal n'a pas été trouvé.");
+    // On cible le conteneur principal du baromètre pour être plus précis
+    const barometer = $('.barometre.national');
+    if (barometer.length === 0) {
+      console.error('Erreur Critique: Le bloc du baromètre national est introuvable.');
+      throw new Error("Conteneur du baromètre introuvable.");
     }
     
-    // Dans ce tableau, on cherche la ligne qui contient "25 ans"
-    const targetRow = ratesTable.find('tr').filter(function() {
+    // Dans ce bloc, on cherche la ligne qui contient "25 ans"
+    const targetRow = barometer.find('tr').filter(function() {
       return $(this).find('td').first().text().trim() === '25 ans';
     });
 
     if (targetRow.length === 0) {
-      console.error('Erreur Critique: Impossible de trouver la ligne "25 ans" dans le tableau.');
-      throw new Error("La ligne '25 ans' est introuvable.");
+      console.error('Erreur Critique: Impossible de trouver la ligne "25 ans" dans le baromètre national.');
+      throw new Error("Ligne '25 ans' introuvable.");
     }
 
-    // Le taux "Excellent" est dans la DEUXIÈME colonne (index 1) de cette ligne
+    // Le taux "Excellent" est dans la DEUXIÈME colonne (index 1)
     const rateCell = targetRow.find('td').eq(1);
-    
     if (rateCell.length === 0) {
       console.error('Erreur Critique: Impossible de trouver la cellule du taux "Excellent".');
-      throw new Error("La cellule du taux est introuvable.");
+      throw new Error("Cellule du taux introuvable.");
     }
 
     const rateText = rateCell.text().trim().replace('%', '').replace(',', '.').trim();
@@ -52,7 +50,7 @@ exports.handler = async function(event, context) {
     }
     
     excellentRate = rateValue;
-    console.log('✅ Taux récupéré avec succès:', excellentRate);
+    console.log(`✅ Taux "Excellent" sur 25 ans récupéré avec succès: ${excellentRate}%`);
 
     return {
       statusCode: 200,
