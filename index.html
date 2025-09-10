@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur de Rentabilité pour Investissement Parking</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0284c7"/>
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/0284c7/white?text=P">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .info-icon {
+            cursor: help;
+        }
+        .info-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .info-icon:hover .info-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .result-card {
+            transition: all 0.3s ease-in-out;
+        }
+        .simulation-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .sort-btn.active {
+            background-color: #3b82f6; /* bg-blue-600 */
+            color: white;
+        }
+        .highlight-year td, .highlight-year th {
+            background-color: #e0f2fe; /* sky-100 */
+        }
+        /* Styles pour l'impression */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            .no-print, #auth-container, #logout-btn-container {
+                display: none !important;
+            }
+            #app-container, body, .container {
+                display: block !important;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+                max-width: 100% !important;
+            }
+            main, #results-section > div, .bg-white {
+                 background-color: #ffffff !important;
+                 color: #000000 !important;
+                 box-shadow: none !important;
+                 border: 1px solid #e2e8f0; /* slate-200 */
+                 page-break-inside: avoid;
+            }
+            .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-slate-500,
+            .text-green-900, .text-green-800, .text-red-900, .text-red-800,
+            .text-blue-900, .text-blue-800, .text-blue-700 {
+                color: #000000 !important;
+            }
+             .bg-slate-100, .bg-green-50, .bg-red-50, .bg-blue-50, .bg-slate-50 {
+                background-color: #f1f5f9 !important; /* light gray for contrast */
+            }
+            .printable-table-container {
+                max-height: none !important;
+                overflow: visible !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="auth-container" class="min-h-screen flex items-center justify-center">
+        <div class="w-full max-w-md mx-auto p-4">
+            <div class="bg-white p-8 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold text-center text-slate-900 mb-6">Accès Investisseur</h2>
+                <div id="auth-error" class="text-red-500 text-sm text-center mb-4 hidden"></div>
+                <form id="login-form" class="space-y-4">
+                    <input type="email" id="email" placeholder="Adresse e-mail" required class="w-full bg-slate-100 border-transparent rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500">
+                    <input type="password" id="password" placeholder="Mot de passe" required class="w-full bg-slate-100 border-transparent rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500">
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">Se connecter</button>
+                    <p class="text-center text-sm text-slate-600 pt-2">Pas de compte ? <a href="#" id="show-signup" class="font-semibold text-blue-600 hover:underline">Inscrivez-vous</a></p>
+                </form>
+                <form id="signup-form" class="space-y-4 hidden">
+                     <input type="email" id="signup-email" placeholder="Adresse e-mail" required class="w-full bg-slate-100 border-transparent rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500">
+                    <input type="password" id="signup-password" placeholder="Mot de passe (6 car. min)" required class="w-full bg-slate-100 border-transparent rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500">
+                    <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300 shadow-md">Créer un compte</button>
+                     <p class="text-center text-sm text-slate-600 pt-2">Déjà un compte ? <a href="#" id="show-login" class="font-semibold text-blue-600 hover:underline">Connectez-vous</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden">
+        <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-5xl">
+            <div id="logout-btn-container" class="text-right mb-4 no-print">
+                 <button id="logout-btn" class="bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-md">Déconnexion</button>
+            </div>
+            <header class="text-center mb-8 no-print">
+                <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">Plan d'Investissement Parking</h1>
+                <p class="text-slate-600 mt-2">Simulateur de rentabilité pour présentation bancaire.</p>
+            </header>
+            
+            <main class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-lg self-start no-print">
+                    <h2 class="text-xl font-bold mb-6 border-b pb-3">Paramètres de l'Investissement</h2>
+                    <form id="investment-form" class="space-y-4">
+                        
+                        <template id="tooltip-template">
+                            <div class="relative info-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                <div class="info-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs text-center rounded-lg shadow-lg pointer-events-none z-10"></div>
+                            </div>
+                        </template>
+
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="city-name" class="block text-sm font-medium text-slate-700">Nom de la Ville</label>
+                                <div data-tooltip="Nom de la ville où se situe le bien, utilisé pour le titre de la simulation."></div>
+                            </div>
+                            <input type="text" id="city-name" value="Paris" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="announcement-link" class="block text-sm font-medium text-slate-700">Lien de l'annonce</label>
+                                <div data-tooltip="Optionnel : collez ici le lien de l'annonce pour le retrouver facilement."></div>
+                            </div>
+                            <input type="url" id="announcement-link" placeholder="https://..." class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+
+                        <h3 class="text-lg font-semibold pt-4 mt-4 border-t">Détails du bien</h3>
+                        <div>
+                             <div class="flex items-center justify-between">
+                                <label for="purchase-price" class="block text-sm font-medium text-slate-700">Prix affiché du lot (€)</label>
+                                <div data-tooltip="Prix de vente affiché dans l'annonce, avant toute négociation."></div>
+                            </div>
+                            <input type="text" id="purchase-price" value="100 000" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                         <div>
+                            <div class="flex items-center justify-between">
+                                <label for="negotiation-rate" class="block text-sm font-medium text-slate-700">Négociation sur le prix (%)</label>
+                                <div data-tooltip="Pourcentage de réduction que vous pensez pouvoir négocier sur le prix affiché."></div>
+                            </div>
+                            <input type="number" id="negotiation-rate" value="5" step="0.1" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="spaces-count" class="block text-sm font-medium text-slate-700">Nombre de places</label>
+                                <div data-tooltip="Nombre total de places de parking dans le lot que vous achetez."></div>
+                            </div>
+                            <input type="number" id="spaces-count" value="10" min="1" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                             <div class="flex items-center justify-between">
+                                <label for="rent-per-space" class="block text-sm font-medium text-slate-700">Loyer mensuel / place (€)</label>
+                                <div data-tooltip="Indiquez le loyer mensuel par place, charges comprises (CC)."></div>
+                            </div>
+                            <input type="number" id="rent-per-space" value="70" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+
+                        <h3 class="text-lg font-semibold pt-4 mt-4 border-t">Fiscalité</h3>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="tax-regime" class="block text-sm font-medium text-slate-700">Régime d'imposition</label>
+                                <div data-tooltip="Micro-BIC : Abattement de 50% sur les revenus. Régime Réel : Déduction des charges réelles (intérêts, taxes, etc.)."></div>
+                            </div>
+                            <select id="tax-regime" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="none">Pas d'imposition (simulation)</option>
+                                <option value="micro" selected>Régime Micro-BIC</option>
+                                <option value="reel">Régime Réel</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="tmi" class="block text-sm font-medium text-slate-700">Tranche Marginale d'Imposition (%)</label>
+                                <div data-tooltip="Votre taux d'imposition le plus élevé (0, 11, 30, 41 ou 45%). Les revenus locatifs sont ajoutés à vos autres revenus et imposés à ce taux."></div>
+                            </div>
+                            <select id="tmi" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="0">0 %</option>
+                                <option value="11">11 %</option>
+                                <option value="30" selected>30 %</option>
+                                <option value="41">41 %</option>
+                                <option value="45">45 %</option>
+                            </select>
+                        </div>
+
+
+                        <h3 class="text-lg font-semibold pt-4 mt-4 border-t">Paramètres d'Évolution</h3>
+                         <div>
+                            <div class="flex items-center justify-between">
+                                <label for="appreciation-rate" class="block text-sm font-medium text-slate-700">Revalorisation annuelle du lot (%)</label>
+                                <div data-tooltip="Estimation de l'augmentation annuelle de la valeur du bien. Une moyenne se situe entre 1% et 2%."></div>
+                            </div>
+                            <input type="number" id="appreciation-rate" value="1" step="0.1" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                             <div class="flex items-center justify-between">
+                                <label for="rent-increase-rate" class="block text-sm font-medium text-slate-700">Revalorisation annuelle loyers (%)</label>
+                                <div data-tooltip="Augmentation annuelle des loyers, souvent basée sur l'indice IRL (environ 2% en moyenne)."></div>
+                            </div>
+                            <input type="number" id="rent-increase-rate" value="2" step="0.1" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="charges-increase-rate" class="block text-sm font-medium text-slate-700">Revalorisation annuelle charges (%)</label>
+                                <div data-tooltip="Augmentation annuelle des charges (copropriété, PNO, taxe foncière)."></div>
+                            </div>
+                            <input type="number" id="charges-increase-rate" value="1.5" step="0.1" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+
+                        <h3 class="text-lg font-semibold pt-4 mt-4 border-t">Paramètres du Financement</h3>
+                         <div class="space-y-2">
+                             <div class="flex items-center justify-between">
+                                <label for="notary-fees" class="block text-sm font-medium text-slate-700">Frais de notaire (€)</label>
+                                <div data-tooltip="Calculés automatiquement à 12% du prix négocié (taux courant pour les parkings), ou saisissables manuellement."></div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span></span>
+                                <div class="flex items-center">
+                                    <span class="text-xs text-slate-500 mr-2">Manuelle</span>
+                                    <label for="toggle-notary-fees" class="inline-flex relative items-center cursor-pointer">
+                                        <input type="checkbox" value="" id="toggle-notary-fees" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <input type="text" id="notary-fees" placeholder="Calculé à 12%" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 transition" disabled>
+                        </div>
+                         <div>
+                            <div class="flex items-center justify-between">
+                                <label for="personal-contribution" class="block text-sm font-medium text-slate-700">Apport personnel (€)</label>
+                                <div data-tooltip="Montant que vous financez sans emprunter. L'apport couvre généralement au minimum les frais de notaire."></div>
+                            </div>
+                            <input type="text" id="personal-contribution" value="0" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                         <div class="space-y-2">
+                             <div class="flex items-center justify-between">
+                                <label for="loan-rate" class="block text-sm font-medium text-slate-700">Taux du crédit (%)</label>
+                                <div data-tooltip="Taux d'intérêt annuel du prêt. Taux 'Excellent' sur 25 ans (Meilleurtaux.com) mis à jour automatiquement."></div>
+                            </div>
+                             <div class="flex items-center justify-between">
+                                <span></span>
+                                <div class="flex items-center">
+                                    <span id="loan-rate-status" class="text-xs text-slate-500 mr-2"></span>
+                                    <label for="toggle-loan-rate" class="inline-flex relative items-center cursor-pointer">
+                                        <input type="checkbox" value="" id="toggle-loan-rate" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <input type="number" id="loan-rate" value="3.10" step="0.01" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" disabled>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="loan-insurance-rate" class="block text-sm font-medium text-slate-700">Taux d'assurance crédit (%)</label>
+                                <div data-tooltip="Taux annuel de l'assurance emprunteur, calculé sur le montant total emprunté."></div>
+                            </div>
+                            <input type="number" id="loan-insurance-rate" value="0.35" step="0.01" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="loan-duration" class="block text-sm font-medium text-slate-700">Durée du crédit (années)</label>
+                                <div data-tooltip="Durée totale de remboursement du prêt."></div>
+                            </div>
+                            <input type="number" id="loan-duration" value="25" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+
+                        <h3 class="text-lg font-semibold pt-4 mt-4 border-t">Charges Annuelles & Mensuelles</h3>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="pno-insurance" class="block text-sm font-medium text-slate-700">Assurance PNO annuelle / place (€)</label>
+                                <div data-tooltip="Assurance Propriétaire Non Occupant. Obligatoire pour un bien en location."></div>
+                            </div>
+                            <input type="number" id="pno-insurance" value="30" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                         <div>
+                            <div class="flex items-center justify-between">
+                                <label for="co-ownership-charges" class="block text-sm font-medium text-slate-700">Charges copro. mensuelles / place (€)</label>
+                                <div data-tooltip="Charges de copropriété non récupérables sur le locataire (ex: honoraires du syndic, entretien des parties communes)."></div>
+                            </div>
+                            <input type="number" id="co-ownership-charges" value="10" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div class="space-y-2 pt-2">
+                             <div class="flex items-center justify-between">
+                                <label for="property-tax" class="block text-sm font-medium text-slate-700">Taxe foncière annuelle (€)</label>
+                                <div data-tooltip="Calculée par défaut sur la base d'un mois de loyer total, ou saisissable manuellement."></div>
+                            </div>
+                             <div class="flex items-center justify-between">
+                                <span></span>
+                                <div class="flex items-center">
+                                    <span class="text-xs text-slate-500 mr-2">Manuelle</span>
+                                    <label for="toggle-property-tax" class="inline-flex relative items-center cursor-pointer">
+                                        <input type="checkbox" value="" id="toggle-property-tax" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <input type="text" id="property-tax" placeholder="Calculée sur 1 mois de loyer" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 transition" disabled>
+                        </div>
+                        
+                        <h3 class="text-lg font-semibold pt-4 mt-4 border-t">⚡️ Option : Électrification des Places</h3>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <label for="electrification-cost-per-space" class="block text-sm font-medium text-slate-700">Coût des travaux / place (€)</label>
+                                <div data-tooltip="Coût d'installation d'une borne de recharge par place. Peut être financé par l'emprunt."></div>
+                            </div>
+                            <input type="text" id="electrification-cost-per-space" placeholder="ex: 1 500" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                         <div>
+                            <div class="flex items-center justify-between">
+                                <label for="electrification-spaces-count" class="block text-sm font-medium text-slate-700">Nombre de places à électrifier</label>
+                            </div>
+                            <select id="electrification-spaces-count" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+                        </div>
+                         <div>
+                             <div class="flex items-center justify-between">
+                                <label for="electrification-year" class="block text-sm font-medium text-slate-700">Année de réalisation des travaux</label>
+                            </div>
+                            <input type="number" id="electrification-year" value="1" min="1" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                             <div class="flex items-center justify-between">
+                                <label for="new-rent-per-space" class="block text-sm font-medium text-slate-700">Nouveau loyer / place électrifiée (€)</label>
+                                <div data-tooltip="Le nouveau loyer (CC) pour les places qui seront équipées d'une borne."></div>
+                            </div>
+                            <input type="number" id="new-rent-per-space" placeholder="ex: 100" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+
+                        <div class="pt-4 space-y-2">
+                            <div class="flex space-x-2">
+                                <button type="button" id="calculate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">Calculer</button>
+                                <button type="button" id="save-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300 shadow-md">Sauvegarder</button>
+                            </div>
+                            <div>
+                                 <button type="button" id="new-sim-btn" class="w-full bg-slate-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition duration-300 shadow-md">Nouvelle simulation</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="results-section" class="md:col-span-2 space-y-6" style="display: none;">
+                    <div class="no-print text-right">
+                        <button type="button" id="print-btn" class="bg-gray-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800 transition duration-300 shadow-md inline-flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"></path></svg>
+                            Imprimer (PDF)
+                        </button>
+                    </div>
+                     <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-bold mb-4">Synthèse du Financement</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                             <div class="bg-slate-100 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600">Coût total du projet</p>
+                                <p id="total-project-cost" class="text-2xl font-semibold"></p>
+                                 <p class="text-xs text-slate-500">(Achat + Notaire + Travaux)</p>
+                            </div>
+                            <div class="bg-slate-100 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600">Montant total à emprunter</p>
+                                <p id="total-loan" class="text-2xl font-semibold"></p>
+                            </div>
+                            <div class="bg-slate-100 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600">Mensualité du crédit</p>
+                                <p id="monthly-payment" class="text-2xl font-semibold"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-bold mb-4">Analyse du Cash Flow (Année 1)</h2>
+                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                            <div class="bg-green-50 p-3 rounded-lg text-center">
+                                <p class="text-sm text-green-800">Revenus Mensuels</p>
+                                <p id="monthly-income" class="text-lg font-bold text-green-900"></p>
+                            </div>
+                            <div class="bg-red-50 p-3 rounded-lg text-center">
+                                <p class="text-sm text-red-800">Dépenses Mensuelles</p>
+                                <p id="monthly-expenses" class="text-lg font-bold text-red-900"></p>
+                            </div>
+                             <div class="bg-red-100 p-3 rounded-lg text-center">
+                                <p class="text-sm text-red-800">Impôt sur le Revenu /m</p>
+                                <p id="monthly-tax" class="text-lg font-bold text-red-900"></p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center mt-6">
+                            <div id="monthly-cf-card" class="result-card p-4 rounded-lg">
+                                <p class="text-sm">Cash Flow Net Mensuel</p>
+                                <p id="monthly-cashflow" class="text-3xl font-bold"></p>
+                            </div>
+                            <div id="annual-cf-card" class="result-card p-4 rounded-lg">
+                                <p class="text-sm">Cash Flow Net Annuel</p>
+                                <p id="annual-cashflow" class="text-3xl font-bold"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-bold mb-4">Évolution Annuelle du Cash Flow</h2>
+                        <div class="overflow-x-auto max-h-[400px] printable-table-container">
+                            <table class="w-full text-sm text-left text-slate-500">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0">
+                                    <tr>
+                                        <th class="px-2 py-3 rounded-l-lg">An</th>
+                                        <th class="px-2 py-3">Revenus</th>
+                                        <th class="px-2 py-3">CF Brut</th>
+                                        <th class="px-2 py-3">Impôt</th>
+                                        <th class="px-2 py-3">CF Net</th>
+                                        <th class="px-2 py-3 rounded-r-lg">CF Net /m</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cashflow-evolution-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-bold mb-4">Analyse de la Revente et Plus-Value</h2>
+                        <div class="overflow-x-auto max-h-[400px] printable-table-container">
+                            <table class="w-full text-sm text-left text-slate-500">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-3 rounded-l-lg">Année</th>
+                                        <th class="px-4 py-3">Valeur du Lot</th>
+                                        <th class="px-4 py-3">Plus-Value Nette</th>
+                                        <th class="px-4 py-3 rounded-r-lg">PV Nette (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resale-analysis-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                     <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 id="final-balance-title" class="text-xl font-bold mb-4">Bilan Final de l'Opération</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                            <div class="bg-slate-50 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600">Total des Cash Flows Nets cumulés</p>
+                                <p id="total-cashflow" class="text-2xl font-semibold"></p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600">Plus-Value Nette à la revente</p>
+                                <p id="final-net-gain" class="text-2xl font-semibold"></p>
+                            </div>
+                        </div>
+                        <div class="mt-4 bg-blue-50 p-4 rounded-lg text-center">
+                             <p class="text-sm text-blue-800">Bénéfice Total de l'Opération (€)</p>
+                             <p id="total-profit-euros" class="text-3xl font-bold text-blue-900"></p>
+                        </div>
+                         <div class="mt-4 bg-blue-50 p-4 rounded-lg text-center">
+                             <p class="text-sm text-blue-800">Bénéfice Total de l'Opération (%)</p>
+                             <p id="total-profit-percent" class="text-3xl font-bold text-blue-900"></p>
+                             <p class="text-xs text-slate-500">(par rapport au coût total d'acquisition)</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-500">
+                        <h2 id="final-balance-title-30" class="text-xl font-bold mb-4 text-blue-700">Bilan Final de l'Opération (Vente à 30 ans)</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                            <div class="bg-slate-50 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600">Total des Cash Flows Nets cumulés</p>
+                                <p id="total-cashflow-30" class="text-2xl font-semibold"></p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600">Plus-Value Nette à la revente</p>
+                                <p id="final-net-gain-30" class="text-2xl font-semibold"></p>
+                            </div>
+                        </div>
+                        <div class="mt-4 bg-blue-50 p-4 rounded-lg text-center">
+                             <p class="text-sm text-blue-800">Bénéfice Total de l'Opération (€)</p>
+                             <p id="total-profit-euros-30" class="text-3xl font-bold text-blue-900"></p>
+                        </div>
+                         <div class="mt-4 bg-blue-50 p-4 rounded-lg text-center">
+                             <p class="text-sm text-blue-800">Bénéfice Total de l'Opération (%)</p>
+                             <p id="total-profit-percent-30" class="text-3xl font-bold text-blue-900"></p>
+                             <p class="text-xs text-slate-500">(par rapport au coût total d'acquisition)</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <section id="saved-simulations-section" class="mt-12 no-print">
+                 <div class="flex flex-wrap items-center justify-between mb-6 border-b pb-3">
+                    <h2 class="text-2xl font-bold text-slate-900">Mes Simulations</h2>
+                    <div id="sort-controls" class="flex items-center gap-2 sm:gap-4">
+                        <span class="text-sm font-medium text-slate-700 hidden sm:block">Trier par:</span>
+                        <button data-sort="date" class="sort-btn text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3 rounded-lg transition active">Date</button>
+                        <button data-sort="name" class="sort-btn text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3 rounded-lg transition">Nom</button>
+                        <button data-sort="investment" class="sort-btn text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3 rounded-lg transition">Investissement</button>
+                        <button data-sort="profit" class="sort-btn text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3 rounded-lg transition">Bénéfice %</button>
+                    </div>
+                </div>
+                <div id="simulations-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                 <p id="no-simulations-message" class="text-slate-500 bg-white p-6 rounded-2xl shadow text-center">Aucune simulation sauvegardée.</p>
+            </section>
+            <section id="top-investments-section" class="mt-12 no-print">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6 border-b pb-3">🏆 Top 3 des Investissements</h2>
+                <div id="top-investments-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <p id="not-enough-simulations-message" class="text-slate-500 bg-white p-6 rounded-2xl shadow text-center" style="display: none;">Sauvegardez au moins une simulation pour voir le classement.</p>
+            </section>
+        </div>
+    </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB4780iRxAhvjUUi-FHf08dXvlOMNWFWe0",
+        authDomain: "simulateur-parking-app.firebaseapp.com",
+        projectId: "simulateur-parking-app",
+        storageBucket: "simulateur-parking-app.firebasestorage.app",
+        messagingSenderId: "5729529939",
+        appId: "1:5729529939:web:c4af96400a826998ab16a6"
+      };
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      let currentUser = null;
+      let allUserSimulations = [];
+      let unsubscribeSimulations = null;
+    </script>
+    <script>
+        const formElements = {
+            cityName: document.getElementById('city-name'),
+            announcementLink: document.getElementById('announcement-link'),
+            purchasePrice: document.getElementById('purchase-price'),
+            negotiationRate: document.getElementById('negotiation-rate'),
+            spacesCount: document.getElementById('spaces-count'),
+            rentPerSpace: document.getElementById('rent-per-space'),
+            taxRegime: document.getElementById('tax-regime'),
+            tmi: document.getElementById('tmi'),
+            appreciationRate: document.getElementById('appreciation-rate'),
+            rentIncreaseRate: document.getElementById('rent-increase-rate'),
+            chargesIncreaseRate: document.getElementById('charges-increase-rate'),
+            toggleNotaryFees: document.getElementById('toggle-notary-fees'),
+            notaryFees: document.getElementById('notary-fees'),
+            personalContribution: document.getElementById('personal-contribution'),
+            toggleLoanRate: document.getElementById('toggle-loan-rate'),
+            loanRate: document.getElementById('loan-rate'),
+            loanInsuranceRate: document.getElementById('loan-insurance-rate'),
+            loanDuration: document.getElementById('loan-duration'),
+            pnoInsurance: document.getElementById('pno-insurance'),
+            coOwnershipCharges: document.getElementById('co-ownership-charges'),
+            togglePropertyTax: document.getElementById('toggle-property-tax'),
+            propertyTax: document.getElementById('property-tax'),
+            electrificationCostPerSpace: document.getElementById('electrification-cost-per-space'),
+            electrificationSpacesCount: document.getElementById('electrification-spaces-count'),
+            electrificationYear: document.getElementById('electrification-year'),
+            newRentPerSpace: document.getElementById('new-rent-per-space'),
+        };
+        const formatCurrency = (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+        const formatPercent = (value) => `${value.toFixed(2)} %`;
+        const formatNumber = (num) => isNaN(num) ? '' : num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        const parseFormattedNumber = (str) => parseFloat(String(str).replace(/\s/g, '')) || 0;
+        
+        const applyFormatting = (e) => {
+            const input = e.target;
+            const value = parseFormattedNumber(input.value);
+            if (input.value !== formatNumber(value)) {
+               input.value = formatNumber(value);
+            }
+        };
+
+        const toggleUI = (toggle, input, placeholderEnabled, placeholderDisabled) => {
+            input.disabled = !toggle.checked;
+            if(placeholderEnabled !== null) input.placeholder = toggle.checked ? placeholderEnabled : placeholderDisabled;
+        };
+
+        const updateElectrificationSpacesDropdown = () => {
+            const totalSpaces = parseInt(formElements.spacesCount.value, 10) || 0;
+            const dropdown = formElements.electrificationSpacesCount;
+            const currentValue = parseInt(dropdown.value, 10);
+            dropdown.innerHTML = '';
+            for (let i = 0; i <= totalSpaces; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                if (i === currentValue) option.selected = true;
+                dropdown.appendChild(option);
+            }
+            if(currentValue > totalSpaces) dropdown.value = totalSpaces;
+        };
+
+        function resetForm() {
+            document.getElementById('investment-form').reset();
+            formElements.cityName.value = 'Paris';
+            formElements.purchasePrice.value = '100 000';
+            formElements.negotiationRate.value = '5';
+            formElements.spacesCount.value = '10';
+            formElements.rentPerSpace.value = '70';
+            formElements.appreciationRate.value = '1';
+            formElements.rentIncreaseRate.value = '2';
+            formElements.chargesIncreaseRate.value = '1.5';
+            formElements.personalContribution.value = '0';
+            
+            formElements.toggleLoanRate.checked = false;
+            toggleUI(formElements.toggleLoanRate, formElements.loanRate, null, null);
+            fetchExcellentRate();
+
+            formElements.loanInsuranceRate.value = '0.35';
+            formElements.loanDuration.value = '25';
+            formElements.pnoInsurance.value = '30';
+            formElements.coOwnershipCharges.value = '10';
+            formElements.electrificationYear.value = '1';
+            toggleUI(formElements.toggleNotaryFees, formElements.notaryFees, "Montant manuel (€)", "Calculé à 12%");
+            toggleUI(formElements.togglePropertyTax, formElements.propertyTax, "Montant annuel manuel (€)", "Calculée sur 1 mois de loyer");
+            updateElectrificationSpacesDropdown();
+            runSimulation();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function calculateTaxes(annualIncome, annualCharges, annualLoanInterest, taxRegime, tmiRate) {
+            if (taxRegime === 'none' || tmiRate === 0) return 0;
+            const socialContributionsRate = 0.172;
+            const tmi = tmiRate / 100;
+            let taxableBase = 0;
+            if (taxRegime === 'micro') {
+                taxableBase = annualIncome * 0.50;
+            } else if (taxRegime === 'reel') {
+                const deductibleCharges = annualCharges + annualLoanInterest;
+                taxableBase = annualIncome - deductibleCharges;
+            }
+            if (taxableBase <= 0) return 0;
+            return taxableBase * (tmi + socialContributionsRate);
+        }
+
+        function calculateCapitalGainsTax(grossGain, holdingYear) {
+            if (grossGain <= 0) return { tax: 0, netGain: grossGain };
+            const INCOME_TAX_RATE = 0.19;
+            const SOCIAL_TAX_RATE = 0.172;
+            let incomeTaxAllowanceRate = 0;
+            if (holdingYear > 5) {
+                if (holdingYear <= 21) incomeTaxAllowanceRate = (holdingYear - 5) * 0.06;
+                else if (holdingYear === 22) incomeTaxAllowanceRate = (16 * 0.06) + 0.04; 
+                else incomeTaxAllowanceRate = 1; 
+            }
+            let socialTaxAllowanceRate = 0;
+            if (holdingYear > 5) {
+                if (holdingYear <= 21) socialTaxAllowanceRate = (holdingYear - 5) * 0.0165;
+                else if (holdingYear === 22) socialTaxAllowanceRate = (16 * 0.0165) + 0.0160;
+                else if (holdingYear <= 30) socialTaxAllowanceRate = (16 * 0.0165) + 0.0160 + ((holdingYear - 22) * 0.09);
+                else socialTaxAllowanceRate = 1; 
+            }
+            const taxableIncomeBase = grossGain * (1 - incomeTaxAllowanceRate);
+            const taxableSocialBase = grossGain * (1 - socialTaxAllowanceRate);
+            const totalTax = (taxableIncomeBase * INCOME_TAX_RATE) + (taxableSocialBase * SOCIAL_TAX_RATE);
+            return { tax: totalTax, netGain: grossGain - totalTax };
+        }
+
+        function runSimulation() {
+            const values = {};
+            for (const key in formElements) {
+                if (key === 'taxRegime') values[key] = formElements[key].value;
+                else if (['purchasePrice', 'personalContribution', 'notaryFees', 'propertyTax', 'electrificationCostPerSpace'].includes(key)) values[key] = parseFormattedNumber(formElements[key].value);
+                else if (key === 'cityName' || key === 'announcementLink') values[key] = formElements[key].value;
+                else if (formElements[key].type === 'checkbox') values[key] = formElements[key].checked;
+                else values[key] = parseFloat(formElements[key].value) || 0;
+            }
+            if (isNaN(values.purchasePrice) || isNaN(values.spacesCount)) return;
+            const negotiatedPurchasePrice = values.purchasePrice * (1 - (values.negotiationRate / 100));
+            let notaryFees = values.toggleNotaryFees && values.notaryFees > 0 ? values.notaryFees : (negotiatedPurchasePrice * 0.12);
+            const totalWorkCost = values.electrificationCostPerSpace * values.electrificationSpacesCount;
+            const totalAcquisitionCost = negotiatedPurchasePrice + notaryFees + totalWorkCost;
+            const totalLoanAmount = totalAcquisitionCost - values.personalContribution;
+            const monthlyRate = values.loanRate / 100 / 12;
+            const numberOfPayments = values.loanDuration * 12;
+            let monthlyPayment = 0;
+            if (totalLoanAmount > 0 && monthlyRate > 0) monthlyPayment = totalLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+            const monthlyInsurance = totalLoanAmount * (values.loanInsuranceRate / 100 / 12);
+            const totalMonthlyPayment = monthlyPayment + monthlyInsurance;
+            
+            const cashflowEvolutionTable = document.getElementById('cashflow-evolution-table');
+            cashflowEvolutionTable.innerHTML = '';
+            
+            let totalNetCashflowOverLoanTerm = 0, totalNetCashflowOver30Years = 0;
+            let finalNetGainAtLoanEnd = 0, finalNetGainAt30 = 0;
+            let currentStandardRent = values.rentPerSpace, currentElecRent = values.newRentPerSpace || values.rentPerSpace;
+            let currentAnnualPno = values.pnoInsurance * values.spacesCount;
+            let currentAnnualCopro = (values.coOwnershipCharges * values.spacesCount) * 12;
+            let initialMonthlyIncome = values.spacesCount * values.rentPerSpace;
+            let currentAnnualPropertyTax = values.togglePropertyTax && values.propertyTax > 0 ? values.propertyTax : initialMonthlyIncome;
+            let remainingCapital = totalLoanAmount;
+
+            for (let year = 1; year <= 30; year++) {
+                let monthlyIncomeForYear = (year < values.electrificationYear || values.electrificationSpacesCount === 0) ? values.spacesCount * currentStandardRent : ((values.spacesCount - values.electrificationSpacesCount) * currentStandardRent) + (values.electrificationSpacesCount * currentElecRent);
+                const annualIncomeForYear = monthlyIncomeForYear * 12;
+                let annualTaxForYear = values.togglePropertyTax ? currentAnnualPropertyTax : monthlyIncomeForYear;
+                let annualNonDeductibleCharges = currentAnnualPno + currentAnnualCopro + annualTaxForYear;
+                
+                let annualLoanInterest = 0;
+                if (year <= values.loanDuration) {
+                    for(let i=0; i<12; i++) {
+                        let interest = remainingCapital * monthlyRate;
+                        annualLoanInterest += interest;
+                        remainingCapital -= (monthlyPayment - interest);
+                    }
+                }
+
+                const annualTax = calculateTaxes(annualIncomeForYear, annualNonDeductibleCharges, annualLoanInterest, values.taxRegime, values.tmi);
+                const paymentForYear = (year <= values.loanDuration) ? totalMonthlyPayment * 12 : 0;
+                const annualGrossCashflow = annualIncomeForYear - paymentForYear - annualNonDeductibleCharges;
+                const annualNetCashflow = annualGrossCashflow - annualTax;
+
+                if (year <= values.loanDuration) totalNetCashflowOverLoanTerm += annualNetCashflow;
+                totalNetCashflowOver30Years += annualNetCashflow;
+                const lotValue = negotiatedPurchasePrice * Math.pow(1 + (values.appreciationRate / 100), year);
+                const { netGain } = calculateCapitalGainsTax(lotValue - negotiatedPurchasePrice, year);
+                if(year === values.loanDuration) finalNetGainAtLoanEnd = netGain;
+                if(year === 30) finalNetGainAt30 = netGain;
+                if (year === values.loanDuration + 1) cashflowEvolutionTable.innerHTML += `<tr class="bg-blue-100"><td colspan="6" class="text-center font-bold py-2 text-blue-800">Fin du prêt</td></tr>`;
+                
+                const cfRow = document.createElement('tr');
+                cfRow.className = "bg-white border-b hover:bg-slate-50 text-xs";
+                if (year == values.electrificationYear && values.electrificationSpacesCount > 0) cfRow.classList.add('highlight-year');
+                cfRow.innerHTML = `<th class="px-2 py-2 font-medium text-slate-900">${year}</th><td class="px-2 py-2">${formatCurrency(annualIncomeForYear)}</td><td class="px-2 py-2 ${annualGrossCashflow >= 0 ? 'text-gray-600' : 'text-orange-600'}">${formatCurrency(annualGrossCashflow)}</td><td class="px-2 py-2 text-red-600">${formatCurrency(annualTax)}</td><td class="px-2 py-2 font-semibold ${annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(annualNetCashflow)}</td><td class="px-2 py-2 font-semibold ${annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(annualNetCashflow / 12)}</td>`;
+                cashflowEvolutionTable.appendChild(cfRow);
+                
+                currentStandardRent *= (1 + values.rentIncreaseRate / 100);
+                if(values.newRentPerSpace > 0) currentElecRent *= (1 + values.rentIncreaseRate / 100); else currentElecRent = currentStandardRent;
+                currentAnnualPno *= (1 + values.chargesIncreaseRate / 100);
+                currentAnnualCopro *= (1 + values.chargesIncreaseRate / 100);
+                if (values.togglePropertyTax) currentAnnualPropertyTax *= (1 + values.chargesIncreaseRate / 100);
+            }
+            
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('total-project-cost').textContent = formatCurrency(totalAcquisitionCost);
+            document.getElementById('total-loan').textContent = formatCurrency(totalLoanAmount);
+            document.getElementById('monthly-payment').textContent = formatCurrency(totalMonthlyPayment);
+            
+            const monthlyIncomeY1 = values.spacesCount * values.rentPerSpace;
+            const annualPropertyTaxY1 = values.togglePropertyTax && values.propertyTax > 0 ? values.propertyTax : monthlyIncomeY1;
+            const monthlyChargesY1 = (currentAnnualPno / 12) + (currentAnnualCopro / 12) + (annualPropertyTaxY1 / 12);
+            const monthlyExpensesY1 = totalMonthlyPayment + monthlyChargesY1;
+
+            let interestY1 = 0;
+            let tempCapital = totalLoanAmount;
+            for(let i=0; i<12; i++) {
+                let interest = tempCapital * monthlyRate;
+                interestY1 += interest;
+                tempCapital -= (monthlyPayment - interest);
+            }
+            const taxY1 = calculateTaxes(monthlyIncomeY1*12, (monthlyChargesY1*12) + (currentAnnualPno + currentAnnualCopro + annualPropertyTaxY1), interestY1, values.taxRegime, values.tmi);
+            const monthlyTaxY1 = taxY1 / 12;
+            const monthlyNetCashflowY1 = monthlyIncomeY1 - monthlyExpensesY1 - monthlyTaxY1;
+
+            document.getElementById('monthly-income').textContent = formatCurrency(monthlyIncomeY1);
+            document.getElementById('monthly-expenses').textContent = formatCurrency(monthlyExpensesY1);
+            document.getElementById('monthly-tax').textContent = formatCurrency(monthlyTaxY1);
+            document.getElementById('monthly-cashflow').textContent = formatCurrency(monthlyNetCashflowY1);
+            document.getElementById('annual-cashflow').textContent = formatCurrency(monthlyNetCashflowY1 * 12);
+            
+            const monthlyCfCard = document.getElementById('monthly-cf-card');
+            monthlyCfCard.className = 'result-card p-4 rounded-lg';
+            if (monthlyNetCashflowY1 >= 0) monthlyCfCard.classList.add('bg-green-100', 'text-green-800'); else monthlyCfCard.classList.add('bg-red-100', 'text-red-800');
+            document.getElementById('annual-cf-card').className = monthlyCfCard.className;
+            
+            const totalProfitEurosLoanEnd = totalNetCashflowOverLoanTerm + finalNetGainAtLoanEnd;
+            const totalProfitPercentLoanEnd = totalAcquisitionCost > 0 ? (totalProfitEurosLoanEnd / totalAcquisitionCost) * 100 : 0;
+            document.getElementById('final-balance-title').textContent = `Bilan Final de l'Opération (Vente à ${values.loanDuration} ans)`;
+            document.getElementById('total-cashflow').textContent = formatCurrency(totalNetCashflowOverLoanTerm);
+            document.getElementById('final-net-gain').textContent = formatCurrency(finalNetGainAtLoanEnd);
+            document.getElementById('total-profit-euros').textContent = formatCurrency(totalProfitEurosLoanEnd);
+            document.getElementById('total-profit-percent').textContent = formatPercent(totalProfitPercentLoanEnd);
+            
+            const totalProfitEuros30Years = totalNetCashflowOver30Years + finalNetGainAt30;
+            const totalProfitPercent30Years = totalAcquisitionCost > 0 ? (totalProfitEuros30Years / totalAcquisitionCost) * 100 : 0;
+            document.getElementById('total-cashflow-30').textContent = formatCurrency(totalNetCashflowOver30Years);
+            document.getElementById('final-net-gain-30').textContent = formatCurrency(finalNetGainAt30);
+            document.getElementById('total-profit-euros-30').textContent = formatCurrency(totalProfitEuros30Years);
+            document.getElementById('total-profit-percent-30').textContent = formatPercent(totalProfitPercent30Years);
+            updateResaleTable(negotiatedPurchasePrice, values.appreciationRate, values.loanDuration);
+            return { monthlyNetCashflowY1, totalAcquisitionCost, totalProfitPercent30Years };
+        }
+
+        function updateResaleTable(negotiatedPurchasePrice, appreciationRate, loanDuration) {
+            const resaleTable = document.getElementById('resale-analysis-table');
+            resaleTable.innerHTML = '';
+            for (let year = 1; year <= 30; year++) {
+                if (year <= loanDuration || year === 30) {
+                    const lotValue = negotiatedPurchasePrice * Math.pow(1 + (appreciationRate / 100), year);
+                    const { netGain } = calculateCapitalGainsTax(lotValue - negotiatedPurchasePrice, year);
+                    const netGainPercentage = negotiatedPurchasePrice > 0 ? (netGain / negotiatedPurchasePrice) * 100 : 0;
+                    if (year === 30 && loanDuration < 30) resaleTable.innerHTML += `<tr class="bg-slate-200"><td colspan="4" class="text-center font-semibold py-1">...</td></tr>`;
+                    resaleTable.innerHTML += `<tr class="bg-white border-b hover:bg-slate-50"><th class="px-4 py-2 font-medium text-slate-900">${year}</th><td class="px-4 py-2">${formatCurrency(lotValue)}</td><td class="px-4 py-2 font-semibold ${netGain >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(netGain)}</td><td class="px-4 py-2 ${netGainPercentage >= 0 ? 'text-green-600' : 'text-red-600'}">${formatPercent(netGainPercentage)}</td></tr>`;
+                }
+            }
+        }
+
+        const saveSimulationToFirestore = async (simulation) => {
+            if (!currentUser) {
+                alert("Erreur : Vous n'êtes pas connecté.");
+                return false;
+            }
+            try {
+                await db.collection('simulations').add({ ...simulation, userId: currentUser.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                return true;
+            } catch (error) {
+                console.error("Erreur de sauvegarde:", error);
+                let errorMessage = "Une erreur est survenue lors de la sauvegarde. ";
+                if (error.code === 'permission-denied') {
+                    errorMessage += "Veuillez vérifier les règles de sécurité de votre base de données Firestore.";
+                } else {
+                    errorMessage += "Vérifiez votre connexion internet et réessayez.";
+                }
+                alert(errorMessage);
+                return false;
+            }
+        };
+
+        const deleteSimulationFromFirestore = async (docId) => {
+             if (!currentUser) return;
+             try { await db.collection('simulations').doc(docId).delete(); } 
+             catch(error) { console.error("Erreur de suppression:", error); }
+        }
+
+        const renderTopInvestments = (sims) => {
+            const topListEl = document.getElementById('top-investments-list');
+            const messageEl = document.getElementById('not-enough-simulations-message');
+            topListEl.innerHTML = '';
+            if (sims.length === 0) {
+                messageEl.style.display = 'block'; topListEl.style.display = 'none'; return;
+            }
+            messageEl.style.display = 'none'; topListEl.style.display = 'grid';
+            const sortedSims = [...sims].sort((a, b) => b.results.totalProfitPercent30Years - a.results.totalProfitPercent30Years);
+            const topSims = sortedSims.slice(0, 3);
+            const medals = ['🥇', '🥈', '🥉'];
+            topSims.forEach((sim, index) => {
+                const profitPercentClass = sim.results.totalProfitPercent30Years >= 0 ? 'text-blue-600' : 'text-red-600';
+                const card = document.createElement('div');
+                card.className = "bg-white p-5 rounded-xl shadow-lg border-2 border-amber-300";
+                card.innerHTML = `<h3 class="font-bold text-lg text-slate-800 truncate">${medals[index]} ${sim.data.title}</h3><div class="mt-3 space-y-2 text-sm"><p class="flex justify-between"><span>Bénéfice % (30 ans):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercent30Years)}</span></p><p class="flex justify-between"><span>Investissement initial:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p></div>`;
+                topListEl.appendChild(card);
+            });
+        };
+        
+        const renderSimulations = (simsToSort = null) => {
+            const sims = simsToSort || allUserSimulations;
+            const listEl = document.getElementById('simulations-list');
+            const messageEl = document.getElementById('no-simulations-message');
+            listEl.innerHTML = '';
+            if (sims.length === 0) messageEl.style.display = 'block'; else messageEl.style.display = 'none';
+            renderTopInvestments(sims);
+            sims.forEach((sim) => {
+                const cashflowClass = sim.results.monthlyNetCashflowY1 >= 0 ? 'text-green-600' : 'text-red-600';
+                const profitPercentClass = sim.results.totalProfitPercent30Years >= 0 ? 'text-blue-600' : 'text-red-600';
+                let linkHTML = '';
+                if (sim.data.announcementLink) {
+                    try { new URL(sim.data.announcementLink); linkHTML = `<a href="${sim.data.announcementLink}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline text-xs truncate block mt-1">Voir l'annonce</a>`; } catch (_) {}
+                }
+                const card = document.createElement('div');
+                card.className = "simulation-item bg-white p-5 rounded-xl shadow transition duration-300";
+                card.innerHTML = `<h3 class="font-bold text-lg text-slate-800 truncate">${sim.data.title}</h3>${linkHTML}<div class="mt-3 space-y-2 text-sm"><p class="flex justify-between"><span>Investissement:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p><p class="flex justify-between"><span>Bénéfice % (30a):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercent30Years)}</span></p><p class="flex justify-between"><span>CF Net /m (A1):</span> <span class="font-semibold ${cashflowClass}">${formatCurrency(sim.results.monthlyNetCashflowY1)}</span></p></div><div class="mt-4 flex space-x-2"><button data-id="${sim.id}" class="load-sim-btn w-full text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3 rounded-lg transition">Charger</button><button data-id="${sim.id}" class="delete-sim-btn w-full text-sm bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-3 rounded-lg transition">Supprimer</button></div>`;
+                listEl.appendChild(card);
+            });
+        };
+        
+        function listenToSimulations() {
+            if (unsubscribeSimulations) unsubscribeSimulations();
+            if (!currentUser) return;
+
+            unsubscribeSimulations = db.collection('simulations')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc')
+                .onSnapshot(snapshot => {
+                    allUserSimulations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderSimulations(allUserSimulations);
+                }, error => {
+                    console.error("Erreur d'écoute des simulations:", error);
+                });
+        }
+        
+        async function fetchExcellentRate() {
+    const loanRateInput = formElements.loanRate;
+    const loanRateStatus = document.getElementById('loan-rate-status');
+    const fallbackRate = 3.35;
+    
+    // Assurez-vous que l'URL est correcte
+    const apiEndpoint = 'https://parking-investment-app.netlify.app/.netlify/functions/get-rate'; 
+
+    loanRateStatus.textContent = 'MàJ...';
+
+    try {
+        const response = await fetch(apiEndpoint);
+        const data = await response.json();
+        
+        if (!response.ok || !data.rate) {
+             console.error('Erreur reçue de la fonction Netlify:', data.details || 'Pas de taux valide.');
+             throw new Error(data.error || 'Réponse invalide');
+        }
+        
+        if (!formElements.toggleLoanRate.checked) {
+            loanRateInput.value = data.rate.toFixed(2);
+            runSimulation();
+        }
+        loanRateStatus.textContent = 'Auto ✓';
+        console.log('Taux mis à jour avec succès via l\'API :', data.rate);
+
+    } catch (error) {
+        console.error("Échec de l'appel à la fonction Netlify. Utilisation du taux de secours.", error);
+        if (!formElements.toggleLoanRate.checked) {
+            loanRateInput.value = fallbackRate;
+        }
+        loanRateStatus.textContent = 'Erreur';
+        setTimeout(() => {
+            if (loanRateStatus.textContent === 'Erreur') {
+                loanRateStatus.textContent = 'Auto';
+            }
+        }, 3000);
+    }
+}
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker enregistré:', reg))
+                    .catch(err => console.log('Erreur Service Worker:', err));
+                });
+            }
+            const tooltipTemplate = document.getElementById('tooltip-template');
+            document.querySelectorAll('[data-tooltip]').forEach(el => {
+                const tooltipNode = tooltipTemplate.content.cloneNode(true);
+                tooltipNode.querySelector('.info-tooltip').textContent = el.dataset.tooltip;
+                el.appendChild(tooltipNode);
+            });
+            const authContainer = document.getElementById('auth-container'), appContainer = document.getElementById('app-container');
+            const loginForm = document.getElementById('login-form'), signupForm = document.getElementById('signup-form');
+            const logoutBtn = document.getElementById('logout-btn'), authError = document.getElementById('auth-error');
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user;
+                    authContainer.classList.add('hidden');
+                    appContainer.classList.remove('hidden');
+                    updateElectrificationSpacesDropdown();
+                    fetchExcellentRate();
+                    runSimulation();
+                    listenToSimulations();
+                } else {
+                    currentUser = null;
+                    if (unsubscribeSimulations) unsubscribeSimulations();
+                    authContainer.classList.remove('hidden');
+                    appContainer.classList.add('hidden');
+                }
+            });
+            const handleAuthForm = (form, authMethod) => {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const email = form.querySelector('input[type="email"]').value;
+                    const password = form.querySelector('input[type="password"]').value;
+                    authMethod.call(auth, email, password).catch(error => {
+                        let msg = "Une erreur est survenue. Veuillez réessayer.";
+                        if(error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                            msg = "Email ou mot de passe incorrect.";
+                        } else if (error.code === 'auth/weak-password') {
+                            msg = "Le mot de passe doit faire au moins 6 caractères.";
+                        } else if (error.code === 'auth/email-already-in-use') {
+                            msg = "Cette adresse e-mail est déjà utilisée.";
+                        } else if (error.code === 'auth/invalid-email') {
+                            msg = "Le format de l'adresse e-mail est invalide.";
+                        }
+                        authError.textContent = msg;
+                        authError.classList.remove('hidden');
+                    });
+                });
+            };
+            handleAuthForm(loginForm, auth.signInWithEmailAndPassword);
+            handleAuthForm(signupForm, auth.createUserWithEmailAndPassword);
+            logoutBtn.addEventListener('click', () => auth.signOut());
+            document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); authError.classList.add('hidden'); });
+            document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); authError.classList.add('hidden'); });
+            
+            Object.keys(formElements).forEach(key => {
+                const el = formElements[key];
+                if(el.type === 'text' || el.type === 'number' || el.tagName === 'SELECT') {
+                    el.addEventListener('input', runSimulation);
+                } else if (el.type === 'checkbox') {
+                    el.addEventListener('change', runSimulation);
+                }
+            });
+            formElements.purchasePrice.addEventListener('input', applyFormatting);
+            formElements.personalContribution.addEventListener('input', applyFormatting);
+            formElements.notaryFees.addEventListener('input', applyFormatting);
+            formElements.propertyTax.addEventListener('input', applyFormatting);
+            formElements.electrificationCostPerSpace.addEventListener('input', applyFormatting);
+            
+            formElements.toggleNotaryFees.addEventListener('change', () => { toggleUI(formElements.toggleNotaryFees, formElements.notaryFees, "Montant manuel (€)", "Calculé à 12%"); if(!formElements.toggleNotaryFees.checked) formElements.notaryFees.value = ''; else formElements.notaryFees.focus(); });
+            formElements.togglePropertyTax.addEventListener('change', () => { toggleUI(formElements.togglePropertyTax, formElements.propertyTax, "Montant annuel manuel (€)", "Calculée sur 1 mois de loyer"); if(!formElements.togglePropertyTax.checked) formElements.propertyTax.value = ''; else formElements.propertyTax.focus(); });
+            
+            formElements.toggleLoanRate.addEventListener('change', () => {
+                const isManual = formElements.toggleLoanRate.checked;
+                const statusLabel = document.getElementById('loan-rate-status');
+                toggleUI(formElements.toggleLoanRate, formElements.loanRate, null, null);
+                statusLabel.textContent = isManual ? 'Manuel' : 'Auto';
+                if(!isManual) {
+                    fetchExcellentRate();
+                } else {
+                    formElements.loanRate.focus();
+                }
+            });
+
+            document.getElementById('new-sim-btn').addEventListener('click', resetForm);
+            document.getElementById('print-btn').addEventListener('click', () => window.print());
+            
+            document.getElementById('save-btn').addEventListener('click', async () => {
+                const saveButton = document.getElementById('save-btn');
+                const originalText = saveButton.textContent;
+                saveButton.textContent = 'Sauvegarde...';
+                saveButton.disabled = true;
+
+                const results = runSimulation();
+                if (!results) {
+                    alert("Impossible de calculer les résultats. Vérifiez les paramètres.");
+                    saveButton.textContent = originalText;
+                    saveButton.disabled = false;
+                    return;
+                }
+
+                const newSimData = {};
+                for (const key in formElements) {
+                    newSimData[key] = formElements[key].type === 'checkbox' ? formElements[key].checked : formElements[key].value;
+                }
+                const cityName = formElements.cityName.value || 'N/A';
+                const spacesCount = formElements.spacesCount.value || 0;
+                const contributionK = (parseFormattedNumber(formElements.personalContribution.value) / 1000).toFixed(0);
+                newSimData.title = `${cityName} - ${spacesCount} places - ${contributionK}k€`;
+
+                const success = await saveSimulationToFirestore({ data: newSimData, results });
+
+                if (success) {
+                    saveButton.textContent = 'Succès !';
+                    setTimeout(() => {
+                        saveButton.textContent = originalText;
+                        saveButton.disabled = false;
+                    }, 2000);
+                } else {
+                    saveButton.textContent = 'Échec';
+                    setTimeout(() => {
+                        saveButton.textContent = originalText;
+                        saveButton.disabled = false;
+                    }, 3000);
+                }
+            });
+
+            document.getElementById('simulations-list').addEventListener('click', async (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const simId = button.dataset.id;
+                if (!simId) return;
+                
+                const simToActOn = allUserSimulations.find(s => s.id === simId);
+                if (!simToActOn) return;
+
+                if (button.classList.contains('load-sim-btn')) {
+                    resetForm();
+                    for (const key in simToActOn.data) {
+                        if (formElements[key]) {
+                            const savedValue = simToActOn.data[key];
+                            const element = formElements[key];
+                            if (element.type === 'checkbox') element.checked = savedValue; else element.value = savedValue || '';
+                        }
+                    }
+                    toggleUI(formElements.toggleNotaryFees, formElements.notaryFees, "Montant manuel (€)", "Calculé à 12%");
+                    toggleUI(formElements.togglePropertyTax, formElements.propertyTax, "Montant annuel manuel (€)", "Calculée sur 1 mois de loyer");
+                    toggleUI(formElements.toggleLoanRate, formElements.loanRate, null, null);
+                    document.getElementById('loan-rate-status').textContent = formElements.toggleLoanRate.checked ? 'Manuel' : 'Auto';
+                    updateElectrificationSpacesDropdown();
+                    runSimulation();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                if (button.classList.contains('delete-sim-btn')) {
+                    await deleteSimulationFromFirestore(simId);
+                    document.querySelector('.sort-btn.active').classList.remove('active');
+                    document.querySelector('[data-sort="date"]').classList.add('active');
+                }
+            });
+            document.getElementById('sort-controls').addEventListener('click', (e) => {
+                const button = e.target.closest('button.sort-btn');
+                if (!button) return;
+                document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                const sortType = button.dataset.sort;
+                let sims = [...allUserSimulations];
+                if (sortType === 'investment') sims.sort((a, b) => a.results.totalAcquisitionCost - b.results.totalAcquisitionCost);
+                else if (sortType === 'profit') sims.sort((a, b) => b.results.totalProfitPercent30Years - a.results.totalProfitPercent30Years);
+                else if (sortType === 'name') sims.sort((a, b) => a.data.title.localeCompare(b.data.title));
+                renderSimulations(sims);
+            });
+        });
+    </script>
+</body>
+</html>
