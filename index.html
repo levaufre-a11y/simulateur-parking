@@ -44,13 +44,23 @@
             background-color: #e0f2fe; /* sky-100 */
         }
 
+        .info-icon:hover .info-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
         /* NOUVEAU : Positionnement de l'infobulle sur mobile */
         @media (max-width: 767px) {
             .info-tooltip {
                 left: auto;
                 right: 0;
                 transform: translateX(0);
-                width: 220px; /* Largeur légèrement réduite pour les petits écrans */
+            }
+        }
+
+        .result-card {
+            transition: all 0.3s ease-in-out;
+        }
             }
         }
         /* Styles pour l'impression */
