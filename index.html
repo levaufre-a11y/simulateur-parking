@@ -875,18 +875,43 @@
         }
         
         // Remplacer l'ancienne fonction fetchExcellentRate par celle-ci
-function fetchExcellentRate() {
+async function fetchExcellentRate() {
     const loanRateInput = formElements.loanRate;
     const loanRateStatus = document.getElementById('loan-rate-status');
+    const fallbackRate = 3.30;
     
-    // --- METTEZ À JOUR LE TAUX MANUELLEMENT ICI ---
-    const currentExcellentRate = 3.10; // Changez cette valeur quand le taux change
-    // -----------------------------------------
+    // Assurez-vous que l'URL est correcte
+    const apiEndpoint = 'https://parking-investment-app.netlify.app/.netlify/functions/get-rate'; 
 
-    loanRateStatus.textContent = 'Auto'; // On affiche "Auto" mais c'est une valeur fixe
+    loanRateStatus.textContent = 'MàJ...';
 
-    if (!formElements.toggleLoanRate.checked) {
-        loanRateInput.value = currentExcellentRate;
+    try {
+        const response = await fetch(apiEndpoint);
+        const data = await response.json();
+        
+        if (!response.ok || !data.rate) {
+             console.error('Erreur reçue de la fonction Netlify:', data.details || 'Pas de taux valide.');
+             throw new Error(data.error || 'Réponse invalide');
+        }
+        
+        if (!formElements.toggleLoanRate.checked) {
+            loanRateInput.value = data.rate.toFixed(2);
+            runSimulation();
+        }
+        loanRateStatus.textContent = 'Auto ✓';
+        console.log('Taux mis à jour avec succès via l\'API :', data.rate);
+
+    } catch (error) {
+        console.error("Échec de l'appel à la fonction Netlify. Utilisation du taux de secours.", error);
+        if (!formElements.toggleLoanRate.checked) {
+            loanRateInput.value = fallbackRate;
+        }
+        loanRateStatus.textContent = 'Erreur';
+        setTimeout(() => {
+            if (loanRateStatus.textContent === 'Erreur') {
+                loanRateStatus.textContent = 'Auto';
+            }
+        }, 3000);
     }
 }
 
