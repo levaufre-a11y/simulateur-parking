@@ -4,8 +4,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 exports.handler = async function(event, context) {
+  // L'URL a été corrigée ici
   const url = 'https://www.meilleurtaux.com/credit-immobilier/barometre-des-taux.html';
-  console.log('--- Lancement de la récupération du taux ---');
+  console.log(`--- Début de la récupération du taux depuis : ${url} ---`);
 
   try {
     const { data } = await axios.get(url, {
@@ -17,24 +18,24 @@ exports.handler = async function(event, context) {
     const $ = cheerio.load(data);
     let excellentRate = null;
     
-    // On cible le conteneur principal du baromètre pour être plus précis
+    // On cible le conteneur du baromètre national
     const barometer = $('.barometre.national');
     if (barometer.length === 0) {
       console.error('Erreur Critique: Le bloc du baromètre national est introuvable.');
       throw new Error("Conteneur du baromètre introuvable.");
     }
     
-    // Dans ce bloc, on cherche la ligne qui contient "25 ans"
+    // On cherche la ligne "25 ans"
     const targetRow = barometer.find('tr').filter(function() {
       return $(this).find('td').first().text().trim() === '25 ans';
     });
 
     if (targetRow.length === 0) {
-      console.error('Erreur Critique: Impossible de trouver la ligne "25 ans" dans le baromètre national.');
+      console.error('Erreur Critique: Impossible de trouver la ligne "25 ans".');
       throw new Error("Ligne '25 ans' introuvable.");
     }
 
-    // Le taux "Excellent" est dans la DEUXIÈME colonne (index 1)
+    // On prend la DEUXIÈME colonne pour le taux "Excellent"
     const rateCell = targetRow.find('td').eq(1);
     if (rateCell.length === 0) {
       console.error('Erreur Critique: Impossible de trouver la cellule du taux "Excellent".');
