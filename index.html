@@ -1166,18 +1166,18 @@ function displayResults(results) {
 
     results.evolution.forEach(item => {
         // --- Construction du tableau de Cash Flow ---
-        
-        // 1. Ajout du bandeau "Fin du prêt" si l'année correspond
-        if (item.year === results.loanDuration + 1) {
-            const bannerRow = document.createElement('tr');
-            bannerRow.className = 'bg-blue-100';
-            const bannerCell = document.createElement('td');
-            bannerCell.colSpan = 6;
-            bannerCell.className = 'text-center font-bold py-2 text-blue-800';
-            bannerCell.textContent = 'Fin du prêt';
-            bannerRow.appendChild(bannerCell);
-            cashflowTableBody.appendChild(bannerRow);
-        }
+        if (item.year <= results.loanDuration || item.year === 30) {
+            // Ajout de la ligne "Fin du prêt" si nécessaire
+            if (item.year === 30 && results.loanDuration < 29) {
+                const dotsRow = document.createElement('tr');
+                dotsRow.className = 'bg-slate-200';
+                const dotsCell = document.createElement('td');
+                dotsCell.colSpan = 4;
+                dotsCell.className = 'text-center font-semibold py-1';
+                dotsCell.textContent = 'Fin du prêt';
+                dotsRow.appendChild(dotsCell);
+                resaleTableBody.appendChild(dotsRow);
+            }
 
         // 2. Création de la ligne de données pour le cash flow
         const cfRow = document.createElement('tr');
