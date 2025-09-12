@@ -147,7 +147,7 @@
                 <div class="md:col-span-1 self-start">
                     <div id="back-to-selector-container" class="text-left mb-6 no-print">
                         <button id="back-to-selector" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-3 rounded-lg transition duration-300 shadow-md inline-flex items-center gap-2">
-                            <svg xmlns="http://www.w.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                             Changer de projet
                         </button>
                     </div>
@@ -750,7 +750,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script>
         // IMPORTANT: REMPLACEZ CE BLOC PAR VOTRE PROPRE CONFIGURATION FIREBASE
-         const firebaseConfig = {
+   
+      const firebaseConfig = {
         apiKey: "AIzaSyB4780iRxAhvjUUi-FHf08dXvlOMNWFWe0",
         authDomain: "simulateur-parking-app.firebaseapp.com",
         projectId: "simulateur-parking-app",
@@ -907,7 +908,7 @@
         };
 
         // --- UI NAVIGATION & ROUTING ---
-        function showSimulator(type) {
+        function showSimulator(type, shouldRunSimulation = true) {
             currentInvestmentType = type;
             document.getElementById('project-selector').classList.add('hidden');
             document.getElementById('simulator-container').classList.remove('hidden');
@@ -922,8 +923,10 @@
                 }
             });
             
-            fetchExcellentRate(); 
-            runSimulation();
+            if (shouldRunSimulation) {
+                fetchExcellentRate(); 
+                runSimulation();
+            }
         }
 
         function showSelector() {
@@ -1184,7 +1187,7 @@
             
             const totalProfitEuros30Years = results.totalNetCashflowOver30Years + results.finalNetGainAt30;
             const totalProfitPercent30Years = results.totalAcquisitionCost > 0 ? (totalProfitEuros30Years / results.totalAcquisitionCost) * 100 : 0;
-            results.totalProfitPercent30Years = totalProfitPercent30Years; // Attach for saving
+            results.totalProfitPercent30Years = totalProfitPercent30Years; 
             document.getElementById('total-cashflow-30').textContent = formatCurrency(results.totalNetCashflowOver30Years);
             document.getElementById('final-net-gain-30').textContent = formatCurrency(results.finalNetGainAt30);
             document.getElementById('total-profit-euros-30').textContent = formatCurrency(totalProfitEuros30Years);
@@ -1306,7 +1309,6 @@
         
         // --- EVENT LISTENERS ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Tooltips
             const tooltipTemplate = document.getElementById('tooltip-template');
             document.querySelectorAll('[data-tooltip]').forEach(el => {
                 if (el.children.length > 0 && el.querySelector('.info-icon')) return;
@@ -1315,7 +1317,6 @@
                 el.appendChild(tooltipNode);
             });
             
-            // Authentication
             const authContainer = document.getElementById('auth-container'), appContainer = document.getElementById('app-container');
             const loginForm = document.getElementById('login-form'), signupForm = document.getElementById('signup-form');
             const logoutBtn = document.getElementById('logout-btn'), authError = document.getElementById('auth-error');
@@ -1357,7 +1358,6 @@
             document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); authError.classList.add('hidden'); });
             document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); authError.classList.add('hidden'); });
             
-            // Main App Navigation
             document.getElementById('select-parking').addEventListener('click', () => showSimulator('parking'));
             document.getElementById('select-logement').addEventListener('click', () => showSimulator('logement'));
             document.getElementById('select-cave').addEventListener('click', () => showSimulator('cave'));
@@ -1375,7 +1375,6 @@
                 </div>`;
             document.querySelectorAll('.form-actions').forEach(el => el.innerHTML = actionButtonsHTML);
             
-            // Form Interactions
             document.getElementById('form-container').addEventListener('input', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
                     if (e.target.id.includes('loan-duration')) fetchExcellentRate();
@@ -1420,10 +1419,8 @@
 
                 if (button.classList.contains('btn-new')) {
                     formElements[currentInvestmentType].form.reset();
-                    fetchExcellentRate();
                     runSimulation();
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-
                 } else if (button.classList.contains('btn-save')) {
                     const originalText = button.textContent;
                     button.textContent = 'Sauvegarde...'; button.disabled = true;
@@ -1436,7 +1433,6 @@
                     
                     const currentFormEls = formElements[currentInvestmentType];
                     const newSimData = {};
-                    // CORRECTED: Only loop over own properties and exclude the 'form' element
                     for (const key of Object.keys(currentFormEls)) {
                         if (key !== 'form') {
                            const element = currentFormEls[key];
@@ -1469,32 +1465,29 @@
                     const simToLoad = allUserSimulations.find(s => s.id === simId);
                     if (!simToLoad) return;
                     
-                    showSimulator(simToLoad.type);
+                    showSimulator(simToLoad.type, false); // Affiche le simulateur SANS lancer de calcul
                     
-                    // Use a brief timeout to ensure the form is visible before populating
-                    setTimeout(() => {
-                        const formToPopulate = formElements[simToLoad.type];
-                        for (const key in simToLoad.data) {
-                            if (formToPopulate.hasOwnProperty(key) && key !== 'form') {
-                                const savedValue = simToLoad.data[key];
-                                const element = formToPopulate[key];
-                                if (element.type === 'checkbox') {
-                                    element.checked = savedValue;
-                                } else {
-                                    element.value = savedValue || '';
-                                }
+                    const formToPopulate = formElements[simToLoad.type];
+                    for (const key in simToLoad.data) {
+                        if (formToPopulate.hasOwnProperty(key) && key !== 'form') {
+                            const savedValue = simToLoad.data[key];
+                            const element = formToPopulate[key];
+                            if (element.type === 'checkbox') {
+                                element.checked = savedValue;
+                            } else {
+                                element.value = savedValue || '';
                             }
                         }
-                        
-                        Object.values(formToPopulate).forEach(el => {
-                            if(el && el.id && el.id.includes('toggle')) {
-                                el.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        });
-                        
-                        runSimulation();
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }, 100);
+                    }
+                    
+                    Object.values(formToPopulate).forEach(el => {
+                        if(el && el.id && el.id.includes('toggle')) {
+                            el.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                    
+                    runSimulation(); // Lance le calcul une seule fois APRES avoir tout rempli
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
 
                 } else if (button.classList.contains('delete-sim-btn') && simId) {
                     if(confirm("Êtes-vous sûr de vouloir supprimer cette simulation ?")) {
