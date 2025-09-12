@@ -1166,8 +1166,7 @@ function displayResults(results) {
 
     results.evolution.forEach(item => {
         // --- Construction du tableau de Cash Flow ---
-        if (item.year <= results.loanDuration || item.year === 30) {
-            // Ajout de la ligne "Fin du prêt" si nécessaire
+
         // 1. Ajout du bandeau "Fin du prêt" si l'année correspond
         if (item.year === results.loanDuration + 1) {
             const bannerRow = document.createElement('tr');
