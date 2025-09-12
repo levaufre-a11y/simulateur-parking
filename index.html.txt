@@ -1168,16 +1168,16 @@ function displayResults(results) {
         // --- Construction du tableau de Cash Flow ---
 
         // 1. Ajout du bandeau "Fin du prêt" si l'année correspond
-        'if (item.year === results.loanDuration + 1) {
-            'const bannerRow = document.createElement('tr');
-            'bannerRow.className = 'bg-blue-100'; // Style du bandeau bleu pour une meilleure visibilité
-            'const bannerCell = document.createElement('td');
-            'bannerCell.colSpan = 6; // Adapté pour les 6 colonnes du tableau de cash-flow
-            'bannerCell.className = 'text-center font-bold py-2 text-blue-800';
-            'bannerCell.textContent = 'Fin du prêt';
-            'bannerRow.appendChild(bannerCell);
-            'cashflowTableBody.appendChild(bannerRow);
-        '}
+        // if (item.year === results.loanDuration + 1) {
+            // const bannerRow = document.createElement('tr');
+            // bannerRow.className = 'bg-blue-100'; // Style du bandeau bleu pour une meilleure visibilité
+            // const bannerCell = document.createElement('td');
+            // bannerCell.colSpan = 6; // Adapté pour les 6 colonnes du tableau de cash-flow
+            // bannerCell.className = 'text-center font-bold py-2 text-blue-800';
+            // bannerCell.textContent = 'Fin du prêt';
+            // bannerRow.appendChild(bannerCell);
+            // cashflowTableBody.appendChild(bannerRow);
+        // }
             if (item.year === 30 && results.loanDuration < 29) {
                 const dotsRow = document.createElement('tr');
                 dotsRow.className = 'bg-slate-200';
