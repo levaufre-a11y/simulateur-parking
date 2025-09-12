@@ -57,7 +57,7 @@
             -webkit-print-color-adjust: exact !important;
             color-adjust: exact !important;
         }
-        .no-print, #auth-container, #logout-btn-container {
+        .no-print, #auth-container, #logout-btn-container, #back-to-selector-container {
             display: none !important;
         }
         #app-container, body, .container {
@@ -147,7 +147,7 @@
                 <div class="md:col-span-1 self-start">
                     <div id="back-to-selector-container" class="text-left mb-6 no-print">
                         <button id="back-to-selector" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-3 rounded-lg transition duration-300 shadow-md inline-flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                             Changer de projet
                         </button>
                     </div>
@@ -285,7 +285,7 @@
                                     <div class="flex items-center justify-between">
                                         <span></span>
                                         <div class="flex items-center">
-                                            <span id="parking-loan-rate-status" class="text-xs text-slate-500 mr-2"></span>
+                                            <span id="parking-loan-rate-status" class="text-xs text-slate-500 mr-2">Auto</span>
                                             <label for="parking-toggle-loan-rate" class="inline-flex relative items-center cursor-pointer">
                                                 <input type="checkbox" value="" id="parking-toggle-loan-rate" class="sr-only peer">
                                                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -749,7 +749,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script>
-      const firebaseConfig = {
+        // IMPORTANT: REMPLACEZ CE BLOC PAR VOTRE PROPRE CONFIGURATION FIREBASE
+         const firebaseConfig = {
         apiKey: "AIzaSyB4780iRxAhvjUUi-FHf08dXvlOMNWFWe0",
         authDomain: "simulateur-parking-app.firebaseapp.com",
         projectId: "simulateur-parking-app",
@@ -757,6 +758,8 @@
         messagingSenderId: "5729529939",
         appId: "1:5729529939:web:c4af96400a826998ab16a6"
       };
+        // FIN DU BLOC À REMPLACER
+
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -769,8 +772,10 @@
         // --- UTILITY FUNCTIONS ---
         const formatCurrency = (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(isNaN(value) ? 0 : value);
         const formatPercent = (value) => `${(isNaN(value) ? 0 : value).toFixed(2)} %`;
-        const formatNumber = (num) => isNaN(num) ? '' : num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        const parseFormattedNumber = (str) => parseFloat(String(str).replace(/\s/g, '').replace(',', '.')) || 0;
+        const parseFormattedNumber = (str) => {
+            if (typeof str !== 'string' || str.trim() === '') return 0;
+            return parseFloat(str.replace(/\s/g, '').replace(',', '.')) || 0;
+        }
         
         const toggleUI = (toggle, input, placeholderEnabled, placeholderDisabled) => {
             input.disabled = !toggle.checked;
@@ -779,7 +784,7 @@
 
         // --- TAX CALCULATION LOGIC ---
         function calculateTaxes(annualIncome, annualCharges, annualLoanInterest, taxRegime, tmiRate, managementFees = 0) {
-            if (taxRegime === 'none' || tmiRate === 0) return { tax: 0, taxableBase: 0 };
+            if (taxRegime === 'none' || tmiRate === 0) return { tax: 0 };
             const socialContributionsRate = 0.172;
             const tmi = tmiRate / 100;
             let taxableBase = 0;
@@ -789,9 +794,8 @@
                 const deductibleCharges = annualCharges + annualLoanInterest + managementFees;
                 taxableBase = annualIncome - deductibleCharges;
             }
-            if (taxableBase <= 0) return { tax: 0, taxableBase: 0 };
-            const totalTax = taxableBase * (tmi + socialContributionsRate);
-            return { tax: totalTax, taxableBase: taxableBase };
+            if (taxableBase <= 0) return { tax: 0 };
+            return { tax: taxableBase * (tmi + socialContributionsRate) };
         }
 
         function calculateCapitalGainsTax(grossGain, holdingYear) {
@@ -918,7 +922,7 @@
                 }
             });
             
-            fetchExcellentRate(); // Update rate based on default duration of the selected form
+            fetchExcellentRate(); 
             runSimulation();
         }
 
@@ -945,15 +949,25 @@
         }
 
         // --- SIMULATION LOGIC ---
-        function runParkingSimulation() {
+        function getFormValues(type) {
             const values = {};
-            for (const key in formElements.parking) {
-                const el = formElements.parking[key];
-                if (el.type === 'checkbox') values[key] = el.checked;
-                else if (el.tagName === 'SELECT' || el.type === 'url' || el.type === 'text' && isNaN(parseFormattedNumber(el.value))) values[key] = el.value;
-                else values[key] = parseFormattedNumber(el.value);
+            const elements = formElements[type];
+            for (const key in elements) {
+                if (key === 'form') continue;
+                const el = elements[key];
+                if (el.type === 'checkbox') {
+                    values[key] = el.checked;
+                } else if (el.tagName === 'SELECT' || el.type === 'url' || (el.type === 'text' && isNaN(parseFormattedNumber(el.value)))) {
+                    values[key] = el.value;
+                } else {
+                    values[key] = parseFormattedNumber(el.value);
+                }
             }
-            
+            return values;
+        }
+
+        function runParkingSimulation() {
+            const values = getFormValues('parking');
             if (isNaN(values.purchasePrice) || isNaN(values.spacesCount) || values.spacesCount === 0) return;
 
             const negotiatedPurchasePrice = values.purchasePrice * (1 - (values.negotiationRate / 100));
@@ -984,14 +998,7 @@
         }
 
         function runLogementSimulation() {
-             const values = {};
-            for (const key in formElements.logement) {
-                const el = formElements.logement[key];
-                if (el.type === 'checkbox') values[key] = el.checked;
-                else if (el.tagName === 'SELECT' || el.type === 'url' || el.type === 'text' && isNaN(parseFormattedNumber(el.value))) values[key] = el.value;
-                else values[key] = parseFormattedNumber(el.value);
-            }
-            
+            const values = getFormValues('logement');
             const priceBeforeNego = values.purchasePrice * (1 + values.agencyFees / 100);
             const negotiatedPurchasePrice = priceBeforeNego * (1 - (values.negotiationRate / 100));
             let notaryFees = values.toggleNotaryFees && values.notaryFees > 0 ? values.notaryFees : (negotiatedPurchasePrice * 0.08);
@@ -1003,25 +1010,15 @@
                 notaryFees,
                 totalWorkCost: values.worksCost,
                 totalAcquisitionCost,
-                getAnnualIncome: (year, rents) => {
-                    return (rents.standard * 12) * (1 - values.vacancyRate / 100);
-                },
-                getInitialCharges: () => {
-                    return { pno: values.pnoInsurance, copro: values.coOwnershipCharges, propertyTax: values.propertyTax, useStaticPropertyTax: true };
-                },
+                getAnnualIncome: (year, rents) => (rents.standard * 12) * (1 - values.vacancyRate / 100),
+                getInitialCharges: () => ({ pno: values.pnoInsurance, copro: values.coOwnershipCharges, propertyTax: values.propertyTax, useStaticPropertyTax: true }),
                 getManagementFees: (annualIncome) => annualIncome * (values.managementFees / 100),
                 initialRents: { standard: values.monthlyRentHc, special: 0 }
             });
         }
 
         function runCaveSimulation() {
-            const values = {};
-            for (const key in formElements.cave) {
-                const el = formElements.cave[key];
-                if (el.type === 'checkbox') values[key] = el.checked;
-                else if (el.tagName === 'SELECT' || el.type === 'url' || el.type === 'text' && isNaN(parseFormattedNumber(el.value))) values[key] = el.value;
-                else values[key] = parseFormattedNumber(el.value);
-            }
+            const values = getFormValues('cave');
             if (isNaN(values.purchasePrice) || isNaN(values.count) || values.count === 0) return;
 
             const negotiatedPurchasePrice = values.purchasePrice * (1 - (values.negotiationRate / 100));
@@ -1048,7 +1045,7 @@
 
         function calculateFinancials(params) {
             const {
-                negotiatedPurchasePrice, notaryFees, totalWorkCost, totalAcquisitionCost, personalContribution,
+                negotiatedPurchasePrice, totalAcquisitionCost, personalContribution,
                 loanRate, loanDuration, loanInsuranceRate, appreciationRate, rentIncreaseRate, chargesIncreaseRate,
                 taxRegime, tmi, getAnnualIncome, getInitialCharges, getManagementFees, initialRents
             } = params;
@@ -1078,7 +1075,7 @@
                 const annualIncome = getAnnualIncome(year, currentRents);
                 const annualManagementFees = getManagementFees ? getManagementFees(annualIncome) : 0;
                 
-                let annualTaxForYear = params.useStaticPropertyTax ? currentAnnualPropertyTax : getAnnualIncome(year, currentRents) / 12;
+                let annualTaxForYear = initialCharges.useStaticPropertyTax ? currentAnnualPropertyTax : getAnnualIncome(year, currentRents) / 12 * (1 - (params.vacancyRate || 0) / 100);
                 let annualDeductibleCharges = currentAnnualPno + currentAnnualCopro + annualTaxForYear;
                 
                 let annualLoanInterest = 0;
@@ -1108,24 +1105,23 @@
                 
                 currentRents.standard *= (1 + rentIncreaseRate / 100);
                 if (currentRents.special > 0) currentRents.special *= (1 + rentIncreaseRate / 100);
-                else currentRents.special = currentRents.standard;
-
+                
                 currentAnnualPno *= (1 + chargesIncreaseRate / 100);
                 currentAnnualCopro *= (1 + chargesIncreaseRate / 100);
-                if (params.useStaticPropertyTax) currentAnnualPropertyTax *= (1 + chargesIncreaseRate / 100);
+                if (initialCharges.useStaticPropertyTax) currentAnnualPropertyTax *= (1 + chargesIncreaseRate / 100);
             }
 
             const y1 = evolution[0];
             const monthlyIncomeY1 = y1.annualIncome / 12;
-            const monthlyChargesY1 = (initialCharges.pno + initialCharges.copro + initialCharges.propertyTax + (getManagementFees ? getManagementFees(y1.annualIncome) : 0)) / 12;
-            const monthlyExpensesY1 = totalMonthlyPayment + monthlyChargesY1;
+            const monthlyInitialCharges = (initialCharges.pno + initialCharges.copro + initialCharges.propertyTax + (getManagementFees ? getManagementFees(y1.annualIncome) : 0)) / 12;
+            const monthlyExpensesY1 = totalMonthlyPayment + monthlyInitialCharges;
             const monthlyTaxY1 = y1.annualTax / 12;
             const monthlyNetCashflowY1 = monthlyIncomeY1 - monthlyExpensesY1 - monthlyTaxY1;
 
             return {
                 totalAcquisitionCost, totalLoanAmount, totalMonthlyPayment,
                 monthlyIncomeY1, monthlyExpensesY1, monthlyTaxY1, monthlyNetCashflowY1,
-                loanDuration, negotiatedPurchasePrice, appreciationRate,
+                loanDuration, negotiatedPurchasePrice,
                 totalNetCashflowOverLoanTerm, totalNetCashflowOver30Years,
                 finalNetGainAtLoanEnd, finalNetGainAt30, evolution
             };
@@ -1138,13 +1134,11 @@
                 return;
             }
             document.getElementById('results-section').style.display = 'block';
-
-            // Financing
+            
             document.getElementById('total-project-cost').textContent = formatCurrency(results.totalAcquisitionCost);
             document.getElementById('total-loan').textContent = formatCurrency(results.totalLoanAmount);
             document.getElementById('monthly-payment').textContent = formatCurrency(results.totalMonthlyPayment);
             
-            // Y1 Cashflow
             document.getElementById('monthly-income').textContent = formatCurrency(results.monthlyIncomeY1);
             document.getElementById('monthly-expenses').textContent = formatCurrency(results.monthlyExpensesY1);
             document.getElementById('monthly-tax').textContent = formatCurrency(results.monthlyTaxY1);
@@ -1157,14 +1151,12 @@
             else monthlyCfCard.classList.add('bg-red-100', 'text-red-800');
             document.getElementById('annual-cf-card').className = monthlyCfCard.className;
 
-            // Evolution Tables
             const cashflowTable = document.getElementById('cashflow-evolution-table');
             const resaleTable = document.getElementById('resale-analysis-table');
             cashflowTable.innerHTML = '';
             resaleTable.innerHTML = '';
 
             results.evolution.forEach(item => {
-                // Cashflow table row
                 if (item.year === results.loanDuration + 1) {
                     cashflowTable.innerHTML += `<tr class="bg-blue-100"><td colspan="6" class="text-center font-bold py-2 text-blue-800">Fin du prêt</td></tr>`;
                 }
@@ -1173,7 +1165,6 @@
                 cfRow.innerHTML = `<th class="px-2 py-2 font-medium text-slate-900">${item.year}</th><td class="px-2 py-2">${formatCurrency(item.annualIncome)}</td><td class="px-2 py-2 ${item.annualGrossCashflow >= 0 ? 'text-gray-600' : 'text-orange-600'}">${formatCurrency(item.annualGrossCashflow)}</td><td class="px-2 py-2 text-red-600">${formatCurrency(item.annualTax)}</td><td class="px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.annualNetCashflow)}</td><td class="px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.annualNetCashflow / 12)}</td>`;
                 cashflowTable.appendChild(cfRow);
                 
-                // Resale table row (only for relevant years)
                 if (item.year <= results.loanDuration || item.year === 30) {
                      if (item.year === 30 && results.loanDuration < 29) {
                         resaleTable.innerHTML += `<tr class="bg-slate-200"><td colspan="4" class="text-center font-semibold py-1">...</td></tr>`;
@@ -1183,7 +1174,6 @@
                 }
             });
 
-            // Final Balance
             const totalProfitEurosLoanEnd = results.totalNetCashflowOverLoanTerm + results.finalNetGainAtLoanEnd;
             const totalProfitPercentLoanEnd = results.totalAcquisitionCost > 0 ? (totalProfitEurosLoanEnd / results.totalAcquisitionCost) * 100 : 0;
             document.getElementById('final-balance-title').textContent = `Bilan Final de l'Opération (Vente à ${results.loanDuration} ans)`;
@@ -1194,6 +1184,7 @@
             
             const totalProfitEuros30Years = results.totalNetCashflowOver30Years + results.finalNetGainAt30;
             const totalProfitPercent30Years = results.totalAcquisitionCost > 0 ? (totalProfitEuros30Years / results.totalAcquisitionCost) * 100 : 0;
+            results.totalProfitPercent30Years = totalProfitPercent30Years; // Attach for saving
             document.getElementById('total-cashflow-30').textContent = formatCurrency(results.totalNetCashflowOver30Years);
             document.getElementById('final-net-gain-30').textContent = formatCurrency(results.finalNetGainAt30);
             document.getElementById('total-profit-euros-30').textContent = formatCurrency(totalProfitEuros30Years);
@@ -1234,7 +1225,7 @@
             const icons = { parking: '🚗', logement: '🏠', cave: '📦' };
 
             sims.forEach((sim) => {
-                if (!sim.results || !sim.data) return; // Skip malformed data
+                if (!sim.results || !sim.data) return;
                 const cashflowClass = sim.results.monthlyNetCashflowY1 >= 0 ? 'text-green-600' : 'text-red-600';
                 const profitPercentClass = sim.results.totalProfitPercent30Years >= 0 ? 'text-blue-600' : 'text-red-600';
                 let linkHTML = '';
@@ -1268,11 +1259,9 @@
             const messageEl = document.getElementById('not-enough-simulations-message');
             topListEl.innerHTML = '';
             if (sims.length === 0) {
-                messageEl.style.display = 'block';
-                topListEl.style.display = 'none'; return;
+                messageEl.style.display = 'block'; topListEl.style.display = 'none'; return;
             }
-            messageEl.style.display = 'none';
-            topListEl.style.display = 'grid';
+            messageEl.style.display = 'none'; topListEl.style.display = 'grid';
             
             const sortedSims = [...sims].filter(s => s.results && s.results.totalProfitPercent30Years !== undefined).sort((a, b) => b.results.totalProfitPercent30Years - a.results.totalProfitPercent30Years);
             const topSims = sortedSims.slice(0, 3);
@@ -1282,7 +1271,7 @@
                 const profitPercentClass = sim.results.totalProfitPercent30Years >= 0 ? 'text-blue-600' : 'text-red-600';
                 const card = document.createElement('div');
                 card.className = "bg-white p-5 rounded-xl shadow-lg border-2 border-amber-300";
-                card.innerHTML = `<h3 class="font-bold text-lg text-slate-800 truncate">${medals[index]} ${sim.data.title}</h3><div class="mt-3 space-y-2 text-sm"><p class="flex justify-between"><span>Bénéfice % (30 ans):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercent30Years)}</span></p><p class="flex justify-between"><span>Investissement initial:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p></div>`;
+                card.innerHTML = `<h3 class="font-bold text-lg text-slate-800 truncate">${medals[index]} ${sim.data.title}</h3><div class="mt-3 space-y-2 text-sm"><p class="flex justify-between"><span>Bénéfice % (30 ans):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercent30Years)}</span></p><p class="flex justify-between"><span>Investissement:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p></div>`;
                 topListEl.appendChild(card);
             });
         };
@@ -1296,9 +1285,7 @@
                 .onSnapshot(snapshot => {
                     allUserSimulations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderSimulations(allUserSimulations);
-                }, error => {
-                    console.error("Erreur d'écoute des simulations:", error);
-                });
+                }, error => console.error("Erreur d'écoute des simulations:", error));
         }
         
         function fetchExcellentRate() {
@@ -1311,90 +1298,18 @@
             const duration = parseInt(currentFormElements.loanDuration.value, 10) || 0;
             const currentExcellentRate = excellentRatesByDuration[duration] || excellentRatesByDuration['default'];
             
-            loanRateStatus.textContent = 'Auto'; 
+            if (loanRateStatus) loanRateStatus.textContent = 'Auto'; 
             if (!currentFormElements.toggleLoanRate.checked) {
                 loanRateInput.value = currentExcellentRate;
             }
         }
         
-        function resetForm(type) {
-            const form = formElements[type].form;
-            if(form) {
-                form.reset();
-                // Manually set default values that aren't 0 or empty
-                if (type === 'parking') {
-                    formElements.parking.cityName.value = 'Paris';
-                    formElements.parking.purchasePrice.value = '100000';
-                    formElements.parking.negotiationRate.value = '5';
-                    formElements.parking.spacesCount.value = '10';
-                    formElements.parking.rentPerSpace.value = '70';
-                    formElements.parking.appreciationRate.value = '1';
-                    formElements.parking.rentIncreaseRate.value = '2';
-                    formElements.parking.chargesIncreaseRate.value = '1.5';
-                    formElements.parking.loanInsuranceRate.value = '0.35';
-                    formElements.parking.loanDuration.value = '25';
-                    formElements.parking.pnoInsurance.value = '30';
-                    formElements.parking.coOwnershipCharges.value = '10';
-                    formElements.parking.electrificationYear.value = '1';
-                } else if (type === 'logement') {
-                    formElements.logement.cityName.value = 'Lyon';
-                    formElements.logement.purchasePrice.value = '200000';
-                    formElements.logement.agencyFees.value = '4';
-                    formElements.logement.negotiationRate.value = '3';
-                    formElements.logement.worksCost.value = '10000';
-                    formElements.logement.monthlyRentHc.value = '850';
-                    formElements.logement.monthlyCharges.value = '60';
-                    formElements.logement.vacancyRate.value = '8';
-                    formElements.logement.taxRegime.value = 'reel';
-                    formElements.logement.appreciationRate.value = '1.5';
-                    formElements.logement.rentIncreaseRate.value = '2';
-                    formElements.logement.chargesIncreaseRate.value = '1.5';
-                    formElements.logement.personalContribution.value = '16000';
-                    formElements.logement.loanInsuranceRate.value = '0.35';
-                    formElements.logement.loanDuration.value = '20';
-                    formElements.logement.propertyTax.value = '800';
-                    formElements.logement.coOwnershipCharges.value = '400';
-                    formElements.logement.pnoInsurance.value = '120';
-                    formElements.logement.managementFees.value = '7';
-                } else if (type === 'cave') {
-                    formElements.cave.cityName.value = 'Bordeaux';
-                    formElements.cave.purchasePrice.value = '30000';
-                    formElements.cave.negotiationRate.value = '7';
-                    formElements.cave.count.value = '10';
-                    formElements.cave.rentPerUnit.value = '45';
-                    formElements.cave.taxRegime.value = 'micro';
-                    formElements.cave.appreciationRate.value = '1';
-                    formElements.cave.rentIncreaseRate.value = '2';
-                    formElements.cave.chargesIncreaseRate.value = '1.5';
-                    formElements.cave.loanInsuranceRate.value = '0.35';
-                    formElements.cave.loanDuration.value = '15';
-                    formElements.cave.coOwnershipCharges.value = '5';
-                    formElements.cave.pnoInsurance.value = '15';
-                }
-                
-                // Reset toggles and run simulation
-                Object.values(formElements[type]).forEach(el => {
-                    if(el.id && el.id.includes('toggle')) el.checked = false;
-                });
-
-                fetchExcellentRate();
-                runSimulation();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        }
-
         // --- EVENT LISTENERS ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Service Worker
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js').catch(err => console.log('Erreur Service Worker:', err));
-                });
-            }
-            
             // Tooltips
             const tooltipTemplate = document.getElementById('tooltip-template');
             document.querySelectorAll('[data-tooltip]').forEach(el => {
+                if (el.children.length > 0 && el.querySelector('.info-icon')) return;
                 const tooltipNode = tooltipTemplate.content.cloneNode(true);
                 tooltipNode.querySelector('.info-tooltip').textContent = el.dataset.tooltip;
                 el.appendChild(tooltipNode);
@@ -1416,7 +1331,7 @@
                     if (unsubscribeSimulations) unsubscribeSimulations();
                     authContainer.classList.remove('hidden');
                     appContainer.classList.add('hidden');
-                    showSelector(); // Reset to selector view on logout
+                    showSelector();
                 }
             });
             
@@ -1448,7 +1363,6 @@
             document.getElementById('select-cave').addEventListener('click', () => showSimulator('cave'));
             document.getElementById('back-to-selector').addEventListener('click', showSelector);
             
-            // Add form actions (buttons) dynamically
             const actionButtonsHTML = `
                 <div class="space-y-2">
                     <div class="flex space-x-2">
@@ -1464,9 +1378,7 @@
             // Form Interactions
             document.getElementById('form-container').addEventListener('input', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
-                    if (e.target.id.includes('loan-duration')) {
-                        fetchExcellentRate();
-                    }
+                    if (e.target.id.includes('loan-duration')) fetchExcellentRate();
                      if (e.target.id === 'parking-spaces-count') {
                         const totalSpaces = parseInt(e.target.value, 10) || 0;
                         const dropdown = formElements.parking.electrificationSpacesCount;
@@ -1474,8 +1386,7 @@
                         dropdown.innerHTML = '';
                         for (let i = 0; i <= totalSpaces; i++) {
                             const option = document.createElement('option');
-                            option.value = i;
-                            option.textContent = i;
+                            option.value = i; option.textContent = i;
                             if (i === currentValue) option.selected = true;
                             dropdown.appendChild(option);
                         }
@@ -1507,15 +1418,15 @@
                 const button = e.target.closest('button');
                 if (!button) return;
 
-                if (button.classList.contains('btn-calculate')) {
+                if (button.classList.contains('btn-new')) {
+                    formElements[currentInvestmentType].form.reset();
+                    fetchExcellentRate();
                     runSimulation();
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else if (button.classList.contains('btn-new')) {
-                    resetForm(currentInvestmentType);
+
                 } else if (button.classList.contains('btn-save')) {
                     const originalText = button.textContent;
-                    button.textContent = 'Sauvegarde...';
-                    button.disabled = true;
+                    button.textContent = 'Sauvegarde...'; button.disabled = true;
 
                     const results = runSimulation();
                     if (!results) {
@@ -1525,8 +1436,12 @@
                     
                     const currentFormEls = formElements[currentInvestmentType];
                     const newSimData = {};
-                    for (const key in currentFormEls) {
-                        newSimData[key] = currentFormEls[key].type === 'checkbox' ? currentFormEls[key].checked : currentFormEls[key].value;
+                    // CORRECTED: Only loop over own properties and exclude the 'form' element
+                    for (const key of Object.keys(currentFormEls)) {
+                        if (key !== 'form') {
+                           const element = currentFormEls[key];
+                           newSimData[key] = element.type === 'checkbox' ? element.checked : element.value;
+                        }
                     }
 
                     const cityName = currentFormEls.cityName.value || 'N/A';
@@ -1539,10 +1454,7 @@
                     const success = await saveSimulationToFirestore({ type: currentInvestmentType, data: newSimData, results });
 
                     button.textContent = success ? 'Succès !' : 'Échec';
-                    setTimeout(() => {
-                        button.textContent = originalText;
-                        button.disabled = false;
-                    }, 2000);
+                    setTimeout(() => { button.textContent = originalText; button.disabled = false; }, 2000);
                 }
             });
 
@@ -1559,25 +1471,30 @@
                     
                     showSimulator(simToLoad.type);
                     
-                    const formToPopulate = formElements[simToLoad.type];
-                    for (const key in simToLoad.data) {
-                        if (formToPopulate[key]) {
-                            const savedValue = simToLoad.data[key];
-                            const element = formToPopulate[key];
-                            if (element.type === 'checkbox') element.checked = savedValue;
-                            else element.value = savedValue || '';
+                    // Use a brief timeout to ensure the form is visible before populating
+                    setTimeout(() => {
+                        const formToPopulate = formElements[simToLoad.type];
+                        for (const key in simToLoad.data) {
+                            if (formToPopulate.hasOwnProperty(key) && key !== 'form') {
+                                const savedValue = simToLoad.data[key];
+                                const element = formToPopulate[key];
+                                if (element.type === 'checkbox') {
+                                    element.checked = savedValue;
+                                } else {
+                                    element.value = savedValue || '';
+                                }
+                            }
                         }
-                    }
-                    
-                    // Manually trigger UI updates for toggles
-                    Object.values(formToPopulate).forEach(el => {
-                        if(el.id && el.id.includes('toggle')) {
-                            el.dispatchEvent(new Event('change'));
-                        }
-                    });
-                    
-                    runSimulation();
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                        
+                        Object.values(formToPopulate).forEach(el => {
+                            if(el && el.id && el.id.includes('toggle')) {
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        });
+                        
+                        runSimulation();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 100);
 
                 } else if (button.classList.contains('delete-sim-btn') && simId) {
                     if(confirm("Êtes-vous sûr de vouloir supprimer cette simulation ?")) {
@@ -1587,7 +1504,7 @@
                      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
                      button.classList.add('active');
                      const sortType = button.dataset.sort;
-                     let sims = [...allUserSimulations].filter(s => s.results); // Ensure sims have results
+                     let sims = [...allUserSimulations].filter(s => s.results);
                      if (sortType === 'investment') sims.sort((a, b) => a.results.totalAcquisitionCost - b.results.totalAcquisitionCost);
                      else if (sortType === 'profit') sims.sort((a, b) => b.results.totalProfitPercent30Years - a.results.totalProfitPercent30Years);
                      else if (sortType === 'name') sims.sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
