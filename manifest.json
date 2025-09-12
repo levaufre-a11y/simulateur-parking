@@ -1,20 +1,20 @@
 {
-  "name": "Simulateur Parking Invest",
-  "short_name": "Parking Sim",
+  "name": "Simulateur d'investissement",
+  "short_name": "Investir",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#0284c7",
-  "description": "Un simulateur de rentabilité pour l'investissement dans des places de parking.",
+  "description": "Un simulateur de rentabilité pour l'investissement locatif complet.",
   "icons": [
     {
-      "src": "https://placehold.co/192x192/0284c7/white?text=P",
+      "src": "https://placehold.co/192x192/0284c7/white?text=I",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://placehold.co/512x512/0284c7/white?text=Parking",
+      "src": "https://placehold.co/512x512/0284c7/white?text=Investir",
       "sizes": "512x512",
       "type": "image/png"
     }
