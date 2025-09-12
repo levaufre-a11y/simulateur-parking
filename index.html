@@ -1180,7 +1180,7 @@ function displayResults(results) {
         // }
             if (item.year === 30 && results.loanDuration < 29) {
                 const dotsRow = document.createElement('tr');
-                dotsRow.className = 'bg-slate-200';
+                dotsRow.className = 'bg-blue-100';
                 const dotsCell = document.createElement('td');
                 dotsCell.colSpan = 6;
                 dotsCell.className = 'text-center font-semibold py-1';
@@ -1231,7 +1231,7 @@ function displayResults(results) {
             // Ajout de la ligne "Fin du prêt" si nécessaire
             if (item.year === 30 && results.loanDuration < 29) {
                 const dotsRow = document.createElement('tr');
-                dotsRow.className = 'bg-slate-200';
+                dotsRow.className = 'bg-blue-100';
                 const dotsCell = document.createElement('td');
                 dotsCell.colSpan = 4;
                 dotsCell.className = 'text-center font-semibold py-1';
