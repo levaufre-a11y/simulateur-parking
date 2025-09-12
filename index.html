@@ -1218,14 +1218,14 @@ function displayResults(results) {
         
         // --- Construction du tableau de Revente ---
         if (item.year <= results.loanDuration || item.year === 30) {
-            // Ajout de la ligne "..." si nécessaire
+            // Ajout de la ligne "Fin du prêt" si nécessaire
             if (item.year === 30 && results.loanDuration < 29) {
                 const dotsRow = document.createElement('tr');
                 dotsRow.className = 'bg-slate-200';
                 const dotsCell = document.createElement('td');
                 dotsCell.colSpan = 4;
                 dotsCell.className = 'text-center font-semibold py-1';
-                dotsCell.textContent = '...';
+                dotsCell.textContent = 'Fin du prêt';
                 dotsRow.appendChild(dotsCell);
                 resaleTableBody.appendChild(dotsRow);
             }
