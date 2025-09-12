@@ -1131,17 +1131,19 @@
         }
         
         // --- DISPLAY & RENDER ---
-        function displayResults(results) {
+function displayResults(results) {
             if (!results) {
                 document.getElementById('results-section').style.display = 'none';
                 return;
             }
             document.getElementById('results-section').style.display = 'block';
-            
+
+            // Financing
             document.getElementById('total-project-cost').textContent = formatCurrency(results.totalAcquisitionCost);
             document.getElementById('total-loan').textContent = formatCurrency(results.totalLoanAmount);
             document.getElementById('monthly-payment').textContent = formatCurrency(results.totalMonthlyPayment);
             
+            // Y1 Cashflow
             document.getElementById('monthly-income').textContent = formatCurrency(results.monthlyIncomeY1);
             document.getElementById('monthly-expenses').textContent = formatCurrency(results.monthlyExpensesY1);
             document.getElementById('monthly-tax').textContent = formatCurrency(results.monthlyTaxY1);
@@ -1154,12 +1156,14 @@
             else monthlyCfCard.classList.add('bg-red-100', 'text-red-800');
             document.getElementById('annual-cf-card').className = monthlyCfCard.className;
 
+            // Evolution Tables
             const cashflowTable = document.getElementById('cashflow-evolution-table');
             const resaleTable = document.getElementById('resale-analysis-table');
             cashflowTable.innerHTML = '';
             resaleTable.innerHTML = '';
 
             results.evolution.forEach(item => {
+                // Cashflow table row
                 if (item.year === results.loanDuration + 1) {
                     cashflowTable.innerHTML += `<tr class="bg-blue-100"><td colspan="6" class="text-center font-bold py-2 text-blue-800">Fin du prêt</td></tr>`;
                 }
@@ -1168,15 +1172,22 @@
                 cfRow.innerHTML = `<th class="px-2 py-2 font-medium text-slate-900">${item.year}</th><td class="px-2 py-2">${formatCurrency(item.annualIncome)}</td><td class="px-2 py-2 ${item.annualGrossCashflow >= 0 ? 'text-gray-600' : 'text-orange-600'}">${formatCurrency(item.annualGrossCashflow)}</td><td class="px-2 py-2 text-red-600">${formatCurrency(item.annualTax)}</td><td class="px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.annualNetCashflow)}</td><td class="px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.annualNetCashflow / 12)}</td>`;
                 cashflowTable.appendChild(cfRow);
                 
+                // Resale table row (only for relevant years)
                 if (item.year <= results.loanDuration || item.year === 30) {
                      if (item.year === 30 && results.loanDuration < 29) {
                         resaleTable.innerHTML += `<tr class="bg-slate-200"><td colspan="4" class="text-center font-semibold py-1">...</td></tr>`;
                     }
                     const netGainPercentage = results.negotiatedPurchasePrice > 0 ? (item.netGain / results.negotiatedPurchasePrice) * 100 : 0;
                     resaleTable.innerHTML += `<tr class="bg-white border-b hover:bg-slate-50"><th class="px-4 py-2 font-medium text-slate-900">${item.year}</th><td class="px-4 py-2">${formatCurrency(item.lotValue)}</td><td class="px-4 py-2 font-semibold ${item.netGain >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.netGain)}</td><td class="px-4 py-2 ${netGainPercentage >= 0 ? 'text-green-600' : 'text-red-600'}">${formatPercent(netGainPercentage)}</td></tr>`;
+                
+                    // AJOUT DU BANDEAU DANS LE TABLEAU DE REVENTE
+                    if (item.year === results.loanDuration && results.loanDuration < 30) {
+                        resaleTable.innerHTML += `<tr class="bg-blue-100"><td colspan="4" class="text-center font-bold py-2 text-blue-800">Fin du prêt</td></tr>`;
+                    }
                 }
             });
 
+            // Final Balance
             const totalProfitEurosLoanEnd = results.totalNetCashflowOverLoanTerm + results.finalNetGainAtLoanEnd;
             const totalProfitPercentLoanEnd = results.totalAcquisitionCost > 0 ? (totalProfitEurosLoanEnd / results.totalAcquisitionCost) * 100 : 0;
             document.getElementById('final-balance-title').textContent = `Bilan Final de l'Opération (Vente à ${results.loanDuration} ans)`;
@@ -1193,7 +1204,6 @@
             document.getElementById('total-profit-euros-30').textContent = formatCurrency(totalProfitEuros30Years);
             document.getElementById('total-profit-percent-30').textContent = formatPercent(totalProfitPercent30Years);
         }
-
         // --- DATA & FIRESTORE ---
         const saveSimulationToFirestore = async (simulation) => {
             if (!currentUser) { alert("Erreur : Vous n'êtes pas connecté."); return false; }
