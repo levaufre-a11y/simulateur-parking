@@ -986,8 +986,8 @@
                 totalAcquisitionCost,
                 getAnnualIncome: (year, rents) => {
                     return (year < values.electrificationYear || values.electrificationSpacesCount === 0) 
-                        ? values.spacesCount * rents.standard 
-                        : ((values.spacesCount - values.electrificationSpacesCount) * rents.standard) + (values.electrificationSpacesCount * rents.special);
+                        ? (values.spacesCount * rents.standard) * 12
+                        : (((values.spacesCount - values.electrificationSpacesCount) * rents.standard) + (values.electrificationSpacesCount * rents.special)) * 12;
                 },
                 getInitialCharges: () => {
                     const annualPno = values.pnoInsurance * values.spacesCount;
@@ -1016,7 +1016,7 @@
                 getAnnualIncome: (year, rents) => (rents.standard * 12) * (1 - values.vacancyRate / 100),
                 getInitialCharges: () => ({ pno: values.pnoInsurance, copro: values.coOwnershipCharges, propertyTax: values.propertyTax, useStaticPropertyTax: true }),
                 getManagementFees: (annualIncome) => annualIncome * (values.managementFees / 100),
-                initialRents: { standard: values.monthlyRentHc, special: 0 }
+                initialRents: { standard: values.monthlyRentHc + values.monthlyCharges, special: 0 }
             });
         }
 
