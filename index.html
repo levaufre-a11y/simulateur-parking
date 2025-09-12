@@ -1156,52 +1156,121 @@ function displayResults(results) {
     else monthlyCfCard.classList.add('bg-red-100', 'text-red-800');
     document.getElementById('annual-cf-card').className = monthlyCfCard.className;
 
-    // --- NOUVELLE MÉTHODE DE GÉNÉRATION DES TABLEAUX ---
-    const cashflowTable = document.getElementById('cashflow-evolution-table');
-    const resaleTable = document.getElementById('resale-analysis-table');
-    
-    let cashflowRowsHTML = [];
-    let resaleRowsHTML = [];
+    // --- NOUVELLE MÉTHODE DE GÉNÉRATION DES TABLEAUX (createElement) ---
+    const cashflowTableBody = document.getElementById('cashflow-evolution-table');
+    const resaleTableBody = document.getElementById('resale-analysis-table');
+
+    // Vider les tableaux avant de les remplir
+    cashflowTableBody.innerHTML = '';
+    resaleTableBody.innerHTML = '';
 
     results.evolution.forEach(item => {
-        // Construction du tableau de Cash Flow
+        // --- Construction du tableau de Cash Flow ---
+        
+        // 1. Ajout du bandeau "Fin du prêt" si l'année correspond
         if (item.year === results.loanDuration + 1) {
-            cashflowRowsHTML.push(`<tr class="bg-blue-100"><td colspan="6" class="text-center font-bold py-2 text-blue-800">Fin du prêt</td></tr>`);
+            const bannerRow = document.createElement('tr');
+            bannerRow.className = 'bg-blue-100';
+            const bannerCell = document.createElement('td');
+            bannerCell.colSpan = 6;
+            bannerCell.className = 'text-center font-bold py-2 text-blue-800';
+            bannerCell.textContent = 'Fin du prêt';
+            bannerRow.appendChild(bannerCell);
+            cashflowTableBody.appendChild(bannerRow);
         }
-        cashflowRowsHTML.push(`
-            <tr class="bg-white border-b hover:bg-slate-50 text-xs">
-                <th class="px-2 py-2 font-medium text-slate-900">${item.year}</th>
-                <td class="px-2 py-2">${formatCurrency(item.annualIncome)}</td>
-                <td class="px-2 py-2 ${item.annualGrossCashflow >= 0 ? 'text-gray-600' : 'text-orange-600'}">${formatCurrency(item.annualGrossCashflow)}</td>
-                <td class="px-2 py-2 text-red-600">${formatCurrency(item.annualTax)}</td>
-                <td class="px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.annualNetCashflow)}</td>
-                <td class="px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.annualNetCashflow / 12)}</td>
-            </tr>
-        `);
+
+        // 2. Création de la ligne de données pour le cash flow
+        const cfRow = document.createElement('tr');
+        cfRow.className = 'bg-white border-b hover:bg-slate-50 text-xs';
         
-        // Construction du tableau de Revente
+        // Création et ajout des cellules une par une
+        const yearCell = document.createElement('th');
+        yearCell.className = 'px-2 py-2 font-medium text-slate-900';
+        yearCell.textContent = item.year;
+        cfRow.appendChild(yearCell);
+
+        const incomeCell = document.createElement('td');
+        incomeCell.className = 'px-2 py-2';
+        incomeCell.textContent = formatCurrency(item.annualIncome);
+        cfRow.appendChild(incomeCell);
+
+        const grossCfCell = document.createElement('td');
+        grossCfCell.className = `px-2 py-2 ${item.annualGrossCashflow >= 0 ? 'text-gray-600' : 'text-orange-600'}`;
+        grossCfCell.textContent = formatCurrency(item.annualGrossCashflow);
+        cfRow.appendChild(grossCfCell);
+        
+        const taxCell = document.createElement('td');
+        taxCell.className = 'px-2 py-2 text-red-600';
+        taxCell.textContent = formatCurrency(item.annualTax);
+        cfRow.appendChild(taxCell);
+
+        const netCfCell = document.createElement('td');
+        netCfCell.className = `px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        netCfCell.textContent = formatCurrency(item.annualNetCashflow);
+        cfRow.appendChild(netCfCell);
+        
+        const monthlyNetCfCell = document.createElement('td');
+        monthlyNetCfCell.className = `px-2 py-2 font-semibold ${item.annualNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        monthlyNetCfCell.textContent = formatCurrency(item.annualNetCashflow / 12);
+        cfRow.appendChild(monthlyNetCfCell);
+
+        cashflowTableBody.appendChild(cfRow);
+        
+        // --- Construction du tableau de Revente ---
         if (item.year <= results.loanDuration || item.year === 30) {
+            // Ajout de la ligne "..." si nécessaire
             if (item.year === 30 && results.loanDuration < 29) {
-                resaleRowsHTML.push(`<tr class="bg-slate-200"><td colspan="4" class="text-center font-semibold py-1">...</td></tr>`);
+                const dotsRow = document.createElement('tr');
+                dotsRow.className = 'bg-slate-200';
+                const dotsCell = document.createElement('td');
+                dotsCell.colSpan = 4;
+                dotsCell.className = 'text-center font-semibold py-1';
+                dotsCell.textContent = '...';
+                dotsRow.appendChild(dotsCell);
+                resaleTableBody.appendChild(dotsRow);
             }
+
+            // Création de la ligne de données pour la revente
+            const resaleRow = document.createElement('tr');
+            resaleRow.className = 'bg-white border-b hover:bg-slate-50';
+
+            const resaleYearCell = document.createElement('th');
+            resaleYearCell.className = 'px-4 py-2 font-medium text-slate-900';
+            resaleYearCell.textContent = item.year;
+            resaleRow.appendChild(resaleYearCell);
+
+            const lotValueCell = document.createElement('td');
+            lotValueCell.className = 'px-4 py-2';
+            lotValueCell.textContent = formatCurrency(item.lotValue);
+            resaleRow.appendChild(lotValueCell);
+            
+            const netGainCell = document.createElement('td');
+            netGainCell.className = `px-4 py-2 font-semibold ${item.netGain >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            netGainCell.textContent = formatCurrency(item.netGain);
+            resaleRow.appendChild(netGainCell);
+
+            const netGainPercentCell = document.createElement('td');
             const netGainPercentage = results.negotiatedPurchasePrice > 0 ? (item.netGain / results.negotiatedPurchasePrice) * 100 : 0;
-            resaleRowsHTML.push(`
-                <tr class="bg-white border-b hover:bg-slate-50">
-                    <th class="px-4 py-2 font-medium text-slate-900">${item.year}</th>
-                    <td class="px-4 py-2">${formatCurrency(item.lotValue)}</td>
-                    <td class="px-4 py-2 font-semibold ${item.netGain >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(item.netGain)}</td>
-                    <td class="px-4 py-2 ${netGainPercentage >= 0 ? 'text-green-600' : 'text-red-600'}">${formatPercent(netGainPercentage)}</td>
-                </tr>
-            `);
+            netGainPercentCell.className = `px-4 py-2 ${netGainPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            netGainPercentCell.textContent = formatPercent(netGainPercentage);
+            resaleRow.appendChild(netGainPercentCell);
+
+            resaleTableBody.appendChild(resaleRow);
         
+            // Ajout du bandeau "Fin du prêt" si l'année correspond
             if (item.year === results.loanDuration && results.loanDuration < 30) {
-                resaleRowsHTML.push(`<tr class="bg-blue-100"><td colspan="4" class="text-center font-bold py-2 text-blue-800">Fin du prêt</td></tr>`);
+                const bannerRow = document.createElement('tr');
+                bannerRow.className = 'bg-blue-100';
+                const bannerCell = document.createElement('td');
+                bannerCell.colSpan = 4;
+                bannerCell.className = 'text-center font-bold py-2 text-blue-800';
+                bannerCell.textContent = 'Fin du prêt';
+                bannerRow.appendChild(bannerCell);
+                resaleTableBody.appendChild(bannerRow);
             }
         }
     });
 
-    cashflowTable.innerHTML = cashflowRowsHTML.join('');
-    resaleTable.innerHTML = resaleRowsHTML.join('');
     // --- FIN DE LA NOUVELLE MÉTHODE ---
 
     // Final Balance
