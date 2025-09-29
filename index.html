@@ -379,6 +379,23 @@
                         <div id="form-logement-wrapper" class="hidden">
                             <h2 class="text-xl font-bold mb-6 border-b pb-3">Investissement Logement 🏠</h2>
                             <form id="investment-form-logement" class="space-y-4">
+
+<div>
+    <div class="flex items-center justify-between">
+        <label for="logement-investment-horizon" class="block text-sm font-medium text-slate-700">Horizon de revente (années)</label>
+        <div data-tooltip="Choisissez l'année à laquelle vous souhaitez simuler la revente pour le bilan final."></div>
+    </div>
+    <select id="logement-investment-horizon" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm">
+        <option value="10">10 ans</option>
+        <option value="15">15 ans</option>
+        <option value="20">20 ans</option>
+        <option value="25">25 ans</option>
+        <option value="30" selected>30 ans</option>
+    </select>
+</div>
+
+<h3 class="text-lg font-semibold pt-4 mt-4 border-t">Paramètres du Financement</h3>
+
                                 <div>
                                     <div class="flex items-center justify-between"><label for="logement-city-name" class="block text-sm font-medium text-slate-700">Nom de la Ville</label><div data-tooltip="Nom de la ville où se situe le bien."></div></div>
                                     <input type="text" id="logement-city-name" value="Lyon" class="mt-1 block w-full bg-slate-100 border-transparent rounded-lg shadow-sm">
@@ -836,6 +853,7 @@
                 appreciationRate: document.getElementById('parking-appreciation-rate'),
                 rentIncreaseRate: document.getElementById('parking-rent-increase-rate'),
                 chargesIncreaseRate: document.getElementById('parking-charges-increase-rate'),
+    						investmentHorizon: document.getElementById('logement-investment-horizon'), 
                 toggleNotaryFees: document.getElementById('parking-toggle-notary-fees'),
                 notaryFees: document.getElementById('parking-notary-fees'),
                 personalContribution: document.getElementById('parking-personal-contribution'),
@@ -1047,88 +1065,101 @@
         }
 
         function calculateFinancials(params) {
-            const {
-                negotiatedPurchasePrice, totalAcquisitionCost, personalContribution,
-                loanRate, loanDuration, loanInsuranceRate, appreciationRate, rentIncreaseRate, chargesIncreaseRate,
-                taxRegime, tmi, getAnnualIncome, getInitialCharges, getManagementFees, initialRents
-            } = params;
+    const {
+        negotiatedPurchasePrice, totalAcquisitionCost, personalContribution,
+        loanRate, loanDuration, loanInsuranceRate, appreciationRate, rentIncreaseRate, chargesIncreaseRate,
+        taxRegime, tmi, getAnnualIncome, getInitialCharges, getManagementFees, initialRents,
+        investmentHorizon // NOUVEAU paramètre
+    } = params;
 
-            const totalLoanAmount = totalAcquisitionCost > personalContribution ? totalAcquisitionCost - personalContribution : 0;
-            const monthlyRate = loanRate / 100 / 12;
-            const numberOfPayments = loanDuration * 12;
-            let monthlyPayment = 0;
-            if (totalLoanAmount > 0 && monthlyRate > 0 && numberOfPayments > 0) {
-                monthlyPayment = totalLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+    const totalLoanAmount = totalAcquisitionCost > personalContribution ? totalAcquisitionCost - personalContribution : 0;
+    const monthlyRate = loanRate / 100 / 12;
+    const numberOfPayments = loanDuration * 12;
+    let monthlyPayment = 0;
+    if (totalLoanAmount > 0 && monthlyRate > 0 && numberOfPayments > 0) {
+        monthlyPayment = totalLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+    }
+    const monthlyInsurance = totalLoanAmount * (loanInsuranceRate / 100 / 12);
+    const totalMonthlyPayment = monthlyPayment + monthlyInsurance;
+
+    const initialCharges = getInitialCharges();
+    let currentAnnualPno = initialCharges.pno;
+    let currentAnnualCopro = initialCharges.copro;
+    let currentAnnualPropertyTax = initialCharges.propertyTax;
+    let currentRents = { ...initialRents };
+
+    // MODIFIÉ : Variables pour les bilans
+    let totalNetCashflowOverLoanTerm = 0;
+    let totalNetCashflowOverHorizon = 0;
+    let finalNetGainAtLoanEnd = 0;
+    let finalNetGainAtHorizon = 0;
+    let evolution = [];
+    let remainingCapital = totalLoanAmount;
+
+    // MODIFIÉ : La boucle utilise maintenant l'horizon maximal (30 ans) pour générer les tables complètes
+    for (let year = 1; year <= 30; year++) {
+        const annualIncome = getAnnualIncome(year, currentRents);
+        const annualManagementFees = getManagementFees ? getManagementFees(annualIncome) : 0;
+        
+        let annualTaxForYear = initialCharges.useStaticPropertyTax ? currentAnnualPropertyTax : getAnnualIncome(year, currentRents) / 12 * (1 - (params.vacancyRate || 0) / 100);
+        let annualDeductibleCharges = currentAnnualPno + currentAnnualCopro + annualTaxForYear;
+        
+        let annualLoanInterest = 0;
+        if (year <= loanDuration && totalLoanAmount > 0) {
+            for(let i=0; i<12; i++) {
+                let interest = remainingCapital * monthlyRate;
+                annualLoanInterest += interest;
+                remainingCapital -= (monthlyPayment - interest);
             }
-            const monthlyInsurance = totalLoanAmount * (loanInsuranceRate / 100 / 12);
-            const totalMonthlyPayment = monthlyPayment + monthlyInsurance;
-
-            const initialCharges = getInitialCharges();
-            let currentAnnualPno = initialCharges.pno;
-            let currentAnnualCopro = initialCharges.copro;
-            let currentAnnualPropertyTax = initialCharges.propertyTax;
-            let currentRents = { ...initialRents };
-
-            let totalNetCashflowOverLoanTerm = 0, totalNetCashflowOver30Years = 0;
-            let finalNetGainAtLoanEnd = 0, finalNetGainAt30 = 0;
-            let evolution = [];
-            let remainingCapital = totalLoanAmount;
-
-            for (let year = 1; year <= 30; year++) {
-                const annualIncome = getAnnualIncome(year, currentRents);
-                const annualManagementFees = getManagementFees ? getManagementFees(annualIncome) : 0;
-                
-                let annualTaxForYear = initialCharges.useStaticPropertyTax ? currentAnnualPropertyTax : getAnnualIncome(year, currentRents) / 12 * (1 - (params.vacancyRate || 0) / 100);
-                let annualDeductibleCharges = currentAnnualPno + currentAnnualCopro + annualTaxForYear;
-                
-                let annualLoanInterest = 0;
-                if (year <= loanDuration && totalLoanAmount > 0) {
-                    for(let i=0; i<12; i++) {
-                        let interest = remainingCapital * monthlyRate;
-                        annualLoanInterest += interest;
-                        remainingCapital -= (monthlyPayment - interest);
-                    }
-                }
-                
-                const { tax: annualTax } = calculateTaxes(annualIncome, annualDeductibleCharges, annualLoanInterest, taxRegime, tmi, annualManagementFees);
-                const paymentForYear = (year <= loanDuration) ? totalMonthlyPayment * 12 : 0;
-                const annualTotalCharges = annualDeductibleCharges + annualManagementFees;
-                const annualGrossCashflow = annualIncome - paymentForYear - annualTotalCharges;
-                const annualNetCashflow = annualGrossCashflow - annualTax;
-
-                if (year <= loanDuration) totalNetCashflowOverLoanTerm += annualNetCashflow;
-                totalNetCashflowOver30Years += annualNetCashflow;
-                
-                const lotValue = negotiatedPurchasePrice * Math.pow(1 + (appreciationRate / 100), year);
-                const { netGain } = calculateCapitalGainsTax(lotValue - negotiatedPurchasePrice, year);
-                if(year === loanDuration) finalNetGainAtLoanEnd = netGain;
-                if(year === 30) finalNetGainAt30 = netGain;
-
-                evolution.push({ year, annualIncome, annualGrossCashflow, annualTax, annualNetCashflow, lotValue, netGain });
-                
-                currentRents.standard *= (1 + rentIncreaseRate / 100);
-                if (currentRents.special > 0) currentRents.special *= (1 + rentIncreaseRate / 100);
-                
-                currentAnnualPno *= (1 + chargesIncreaseRate / 100);
-                currentAnnualCopro *= (1 + chargesIncreaseRate / 100);
-                if (initialCharges.useStaticPropertyTax) currentAnnualPropertyTax *= (1 + chargesIncreaseRate / 100);
-            }
-
-            const y1 = evolution[0];
-            const monthlyIncomeY1 = y1.annualIncome / 12;
-            const monthlyInitialCharges = (initialCharges.pno + initialCharges.copro + initialCharges.propertyTax + (getManagementFees ? getManagementFees(y1.annualIncome) : 0)) / 12;
-            const monthlyExpensesY1 = totalMonthlyPayment + monthlyInitialCharges;
-            const monthlyTaxY1 = y1.annualTax / 12;
-            const monthlyNetCashflowY1 = monthlyIncomeY1 - monthlyExpensesY1 - monthlyTaxY1;
-
-            return {
-                totalAcquisitionCost, totalLoanAmount, totalMonthlyPayment,
-                monthlyIncomeY1, monthlyExpensesY1, monthlyTaxY1, monthlyNetCashflowY1,
-                loanDuration, negotiatedPurchasePrice,
-                totalNetCashflowOverLoanTerm, totalNetCashflowOver30Years,
-                finalNetGainAtLoanEnd, finalNetGainAt30, evolution
-            };
         }
+        
+        const { tax: annualTax } = calculateTaxes(annualIncome, annualDeductibleCharges, annualLoanInterest, taxRegime, tmi, annualManagementFees);
+        const paymentForYear = (year <= loanDuration) ? totalMonthlyPayment * 12 : 0;
+        const annualTotalCharges = annualDeductibleCharges + annualManagementFees;
+        const annualGrossCashflow = annualIncome - paymentForYear - annualTotalCharges;
+        const annualNetCashflow = annualGrossCashflow - annualTax;
+
+        // NOUVEAU : Logique de cumul flexible
+        if (year <= loanDuration) {
+            totalNetCashflowOverLoanTerm += annualNetCashflow;
+        }
+        if (year <= investmentHorizon) {
+            totalNetCashflowOverHorizon += annualNetCashflow;
+        }
+        
+        const lotValue = negotiatedPurchasePrice * Math.pow(1 + (appreciationRate / 100), year);
+        const { netGain } = calculateCapitalGainsTax(lotValue - negotiatedPurchasePrice, year);
+        
+        // NOUVEAU : Capture de la plus-value aux moments clés
+        if(year === loanDuration) finalNetGainAtLoanEnd = netGain;
+        if(year === investmentHorizon) finalNetGainAtHorizon = netGain;
+
+        evolution.push({ year, annualIncome, annualGrossCashflow, annualTax, annualNetCashflow, lotValue, netGain });
+        
+        currentRents.standard *= (1 + rentIncreaseRate / 100);
+        if (currentRents.special > 0) currentRents.special *= (1 + rentIncreaseRate / 100);
+        
+        currentAnnualPno *= (1 + chargesIncreaseRate / 100);
+        currentAnnualCopro *= (1 + chargesIncreaseRate / 100);
+        if (initialCharges.useStaticPropertyTax) currentAnnualPropertyTax *= (1 + chargesIncreaseRate / 100);
+    }
+
+    const y1 = evolution[0];
+    const monthlyIncomeY1 = y1.annualIncome / 12;
+    const monthlyInitialCharges = (initialCharges.pno + initialCharges.copro + initialCharges.propertyTax + (getManagementFees ? getManagementFees(y1.annualIncome) : 0)) / 12;
+    const monthlyExpensesY1 = totalMonthlyPayment + monthlyInitialCharges;
+    const monthlyTaxY1 = y1.annualTax / 12;
+    const monthlyNetCashflowY1 = monthlyIncomeY1 - monthlyExpensesY1 - monthlyTaxY1;
+
+    // MODIFIÉ : Le retour inclut les nouvelles valeurs pour le bilan flexible
+    return {
+        totalAcquisitionCost, totalLoanAmount, totalMonthlyPayment,
+        monthlyIncomeY1, monthlyExpensesY1, monthlyTaxY1, monthlyNetCashflowY1,
+        loanDuration, negotiatedPurchasePrice, investmentHorizon, // NOUVEAU
+        totalNetCashflowOverLoanTerm, totalNetCashflowOverHorizon, // NOUVEAU
+        finalNetGainAtLoanEnd, finalNetGainAtHorizon, evolution // NOUVEAU
+    };
+}
         
         // --- DISPLAY & RENDER ---
 function displayResults(results) {
@@ -1292,13 +1323,15 @@ function displayResults(results) {
     document.getElementById('total-profit-euros').textContent = formatCurrency(totalProfitEurosLoanEnd);
     document.getElementById('total-profit-percent').textContent = formatPercent(totalProfitPercentLoanEnd);
     
-    const totalProfitEuros30Years = results.totalNetCashflowOver30Years + results.finalNetGainAt30;
-    const totalProfitPercent30Years = results.totalAcquisitionCost > 0 ? (totalProfitEuros30Years / results.totalAcquisitionCost) * 100 : 0;
-    results.totalProfitPercent30Years = totalProfitPercent30Years; 
-    document.getElementById('total-cashflow-30').textContent = formatCurrency(results.totalNetCashflowOver30Years);
-    document.getElementById('final-net-gain-30').textContent = formatCurrency(results.finalNetGainAt30);
-    document.getElementById('total-profit-euros-30').textContent = formatCurrency(totalProfitEuros30Years);
-    document.getElementById('total-profit-percent-30').textContent = formatPercent(totalProfitPercent30Years);
+    const horizon = results.investmentHorizon; // On récupère l'horizon
+    const totalProfitEurosHorizon = results.totalNetCashflowOverHorizon + results.finalNetGainAtHorizon;
+    const totalProfitPercentHorizon = results.totalAcquisitionCost > 0 ? (totalProfitEurosHorizon / results.totalAcquisitionCost) * 100 : 0;
+    results.totalProfitPercentHorizon = totalProfitPercentHorizon; 
+document.getElementById('final-balance-title-30').textContent = `Bilan Final de l'Opération (Vente à ${horizon} ans)`;
+    document.getElementById('total-cashflow-30').textContent = formatCurrency(results.totalNetCashflowOverHorizon);
+    document.getElementById('final-net-gain-30').textContent = formatCurrency(results.finalNetGainAtHorizon);
+    document.getElementById('total-profit-euros-30').textContent = formatCurrency(totalProfitEurosHorizon);
+    document.getElementById('total-profit-percent-30').textContent = formatPercent(totalProfitPercentHorizon);
 }
         // --- DATA & FIRESTORE ---
         const saveSimulationToFirestore = async (simulation) => {
@@ -1605,7 +1638,7 @@ function displayResults(results) {
                      const sortType = button.dataset.sort;
                      let sims = [...allUserSimulations].filter(s => s.results);
                      if (sortType === 'investment') sims.sort((a, b) => a.results.totalAcquisitionCost - b.results.totalAcquisitionCost);
-                     else if (sortType === 'profit') sims.sort((a, b) => b.results.totalProfitPercent30Years - a.results.totalProfitPercent30Years);
+                     else if (sortType === 'profit') sims.sort((a, b) => (b.results.totalProfitPercentHorizon || 0) - (a.results.totalProfitPercentHorizon || 0));
                      else if (sortType === 'name') sims.sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
                      renderSimulations(sims);
                 }
