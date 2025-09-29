@@ -853,7 +853,6 @@
                 appreciationRate: document.getElementById('parking-appreciation-rate'),
                 rentIncreaseRate: document.getElementById('parking-rent-increase-rate'),
                 chargesIncreaseRate: document.getElementById('parking-charges-increase-rate'),
-    						investmentHorizon: document.getElementById('logement-investment-horizon'), 
                 toggleNotaryFees: document.getElementById('parking-toggle-notary-fees'),
                 notaryFees: document.getElementById('parking-notary-fees'),
                 personalContribution: document.getElementById('parking-personal-contribution'),
@@ -886,6 +885,7 @@
                 appreciationRate: document.getElementById('logement-appreciation-rate'),
                 rentIncreaseRate: document.getElementById('logement-rent-increase-rate'),
                 chargesIncreaseRate: document.getElementById('logement-charges-increase-rate'),
+                			investmentHorizon: document.getElementById('logement-investment-horizon'),
                 toggleNotaryFees: document.getElementById('logement-toggle-notary-fees'),
                 notaryFees: document.getElementById('logement-notary-fees'),
                 personalContribution: document.getElementById('logement-personal-contribution'),
@@ -1326,7 +1326,7 @@ function displayResults(results) {
     const horizon = results.investmentHorizon; // On récupère l'horizon
     const totalProfitEurosHorizon = results.totalNetCashflowOverHorizon + results.finalNetGainAtHorizon;
     const totalProfitPercentHorizon = results.totalAcquisitionCost > 0 ? (totalProfitEurosHorizon / results.totalAcquisitionCost) * 100 : 0;
-    results.totalProfitPercentHorizon = totalProfitPercentHorizon; 
+
 document.getElementById('final-balance-title-30').textContent = `Bilan Final de l'Opération (Vente à ${horizon} ans)`;
     document.getElementById('total-cashflow-30').textContent = formatCurrency(results.totalNetCashflowOverHorizon);
     document.getElementById('final-net-gain-30').textContent = formatCurrency(results.finalNetGainAtHorizon);
