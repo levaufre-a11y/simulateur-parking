@@ -1065,6 +1065,7 @@
         }
 
 function calculateFinancials(params) {
+    // On récupère tous les paramètres
     const {
         negotiatedPurchasePrice, totalAcquisitionCost, personalContribution,
         loanRate, loanDuration, loanInsuranceRate, appreciationRate, rentIncreaseRate, chargesIncreaseRate,
@@ -1072,9 +1073,15 @@ function calculateFinancials(params) {
         investmentHorizon
     } = params;
 
+    // --- CORRECTION CENTRALE ---
+    // On convertit les durées (qui arrivent en chaîne de caractères) en nombres une seule fois.
+    const loanDurationNum = parseInt(loanDuration, 10);
+    const investmentHorizonNum = parseInt(investmentHorizon || loanDuration, 10); // Sécurité si investmentHorizon est vide
+    // --- FIN DE LA CORRECTION ---
+
     const totalLoanAmount = totalAcquisitionCost > personalContribution ? totalAcquisitionCost - personalContribution : 0;
     const monthlyRate = loanRate / 100 / 12;
-    const numberOfPayments = loanDuration * 12;
+    const numberOfPayments = loanDurationNum * 12;
     let monthlyPayment = 0;
     if (totalLoanAmount > 0 && monthlyRate > 0 && numberOfPayments > 0) {
         monthlyPayment = totalLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
@@ -1088,7 +1095,6 @@ function calculateFinancials(params) {
     let currentAnnualPropertyTax = initialCharges.propertyTax;
     let currentRents = { ...initialRents };
 
-    // DÉCLARATION INITIALE
     let totalNetCashflowOverLoanTerm = 0;
     let totalNetCashflowOverHorizon = 0;
     let finalNetGainAtLoanEnd = 0;
@@ -1096,7 +1102,6 @@ function calculateFinancials(params) {
     let evolution = [];
     let remainingCapital = totalLoanAmount;
 
-    // La boucle génère les données pour le tableau
     for (let year = 1; year <= 30; year++) {
         const annualIncome = getAnnualIncome(year, currentRents);
         const annualManagementFees = getManagementFees ? getManagementFees(annualIncome) : 0;
@@ -1105,7 +1110,7 @@ function calculateFinancials(params) {
         let annualDeductibleCharges = currentAnnualPno + currentAnnualCopro + annualTaxForYear;
         
         let annualLoanInterest = 0;
-        if (year <= loanDuration && totalLoanAmount > 0) {
+        if (year <= loanDurationNum && totalLoanAmount > 0) {
             for(let i=0; i<12; i++) {
                 let interest = remainingCapital * monthlyRate;
                 annualLoanInterest += interest;
@@ -1114,26 +1119,25 @@ function calculateFinancials(params) {
         }
         
         const { tax: annualTax } = calculateTaxes(annualIncome, annualDeductibleCharges, annualLoanInterest, taxRegime, tmi, annualManagementFees);
-        const paymentForYear = (year <= loanDuration) ? totalMonthlyPayment * 12 : 0;
+        const paymentForYear = (year <= loanDurationNum) ? totalMonthlyPayment * 12 : 0;
         const annualTotalCharges = annualDeductibleCharges + annualManagementFees;
         const annualGrossCashflow = annualIncome - paymentForYear - annualTotalCharges;
         const annualNetCashflow = annualGrossCashflow - annualTax;
 
-        if (year <= loanDuration) {
+        if (year <= loanDurationNum) {
             totalNetCashflowOverLoanTerm += annualNetCashflow;
         }
-        if (year <= investmentHorizon) {
+        if (year <= investmentHorizonNum) {
             totalNetCashflowOverHorizon += annualNetCashflow;
         }
         
         const lotValue = negotiatedPurchasePrice * Math.pow(1 + (appreciationRate / 100), year);
         const { netGain } = calculateCapitalGainsTax(lotValue - negotiatedPurchasePrice, year);
         
-        // POINT CRUCIAL : C'est ici que les valeurs pour le bilan sont capturées
-        if(year === parseInt(loanDuration, 10)) {
+        if(year === loanDurationNum) {
             finalNetGainAtLoanEnd = netGain;
         }
-        if(year === investmentHorizon) {
+        if(year === investmentHorizonNum) {
             finalNetGainAtHorizon = netGain;
         }
 
@@ -1154,16 +1158,16 @@ function calculateFinancials(params) {
     const monthlyTaxY1 = y1.annualTax / 12;
     const monthlyNetCashflowY1 = monthlyIncomeY1 - monthlyExpensesY1 - monthlyTaxY1;
 
-    // RETOUR FINAL - Les variables capturées sont bien retournées ici
     return {
         totalAcquisitionCost, totalLoanAmount, totalMonthlyPayment,
         monthlyIncomeY1, monthlyExpensesY1, monthlyTaxY1, monthlyNetCashflowY1,
-        loanDuration, negotiatedPurchasePrice, investmentHorizon,
+        loanDuration: loanDurationNum, 
+        negotiatedPurchasePrice, 
+        investmentHorizon: investmentHorizonNum,
         totalNetCashflowOverLoanTerm, totalNetCashflowOverHorizon,
         finalNetGainAtLoanEnd, finalNetGainAtHorizon, evolution
     };
-}
-        
+}        
         // --- DISPLAY & RENDER ---
 function displayResults(results) {
     if (!results) {
