@@ -1326,7 +1326,7 @@ function displayResults(results) {
     document.getElementById('total-profit-euros').textContent = formatCurrency(totalProfitEurosLoanEnd);
     document.getElementById('total-profit-percent').textContent = formatPercent(totalProfitPercentLoanEnd);
     
-    const horizon = results.investmentHorizon; // On récupère l'horizon
+const horizon = sim.data.investmentHorizon || sim.results.loanDuration; // Fallback sur la durée du prêt
     const totalProfitEurosHorizon = results.totalNetCashflowOverHorizon + results.finalNetGainAtHorizon;
     const totalProfitPercentHorizon = results.totalAcquisitionCost > 0 ? (totalProfitEurosHorizon / results.totalAcquisitionCost) * 100 : 0;
 
@@ -1372,7 +1372,7 @@ document.getElementById('final-balance-title-30').textContent = `Bilan Final de 
             sims.forEach((sim) => {
                 if (!sim.results || !sim.data) return;
                 const cashflowClass = sim.results.monthlyNetCashflowY1 >= 0 ? 'text-green-600' : 'text-red-600';
-                const profitPercentClass = sim.results.totalProfitPercent30Years >= 0 ? 'text-blue-600' : 'text-red-600';
+		const profitPercentClass = sim.results.totalProfitPercentHorizon >= 0 ? 'text-blue-600' : 'text-red-600';
                 let linkHTML = '';
                 const announcementLink = sim.data.announcementLink;
                 if (announcementLink) {
@@ -1383,18 +1383,20 @@ document.getElementById('final-balance-title-30').textContent = `Bilan Final de 
                 }
                 const card = document.createElement('div');
                 card.className = "simulation-item bg-white p-5 rounded-xl shadow transition duration-300";
-                card.innerHTML = `
-                    <h3 class="font-bold text-lg text-slate-800 truncate">${icons[sim.type] || ''} ${sim.data.title}</h3>
-                    ${linkHTML}
-                    <div class="mt-3 space-y-2 text-sm">
-                        <p class="flex justify-between"><span>Investissement:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p>
-                        <p class="flex justify-between"><span>Bénéfice % (30a):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercent30Years)}</span></p>
-                        <p class="flex justify-between"><span>CF Net /m (A1):</span> <span class="font-semibold ${cashflowClass}">${formatCurrency(sim.results.monthlyNetCashflowY1)}</span></p>
-                    </div>
-                    <div class="mt-4 flex space-x-2">
-                        <button data-id="${sim.id}" class="load-sim-btn w-full text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3 rounded-lg transition">Charger</button>
-                        <button data-id="${sim.id}" class="delete-sim-btn w-full text-sm bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-3 rounded-lg transition">Supprimer</button>
-                    </div>`;
+card.innerHTML = `
+    <h3 class="font-bold text-lg text-slate-800 truncate">${icons[sim.type] || ''} ${sim.data.title}</h3>
+    ${linkHTML}
+    <div class="mt-3 space-y-2 text-sm">
+        <p class="flex justify-between"><span>Investissement:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p>
+        
+        <p class="flex justify-between"><span>Bénéfice % (${horizon}a):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercentHorizon)}</span></p>
+        
+        <p class="flex justify-between"><span>CF Net /m (A1):</span> <span class="font-semibold ${cashflowClass}">${formatCurrency(sim.results.monthlyNetCashflowY1)}</span></p>
+    </div>
+    <div class="mt-4 flex space-x-2">
+        <button data-id="${sim.id}" class="load-sim-btn w-full text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3 rounded-lg transition">Charger</button>
+        <button data-id="${sim.id}" class="delete-sim-btn w-full text-sm bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-3 rounded-lg transition">Supprimer</button>
+    </div>`;
                 listEl.appendChild(card);
             });
         };
@@ -1573,6 +1575,9 @@ document.getElementById('final-balance-title-30').textContent = `Bilan Final de 
                         button.textContent = originalText; button.disabled = false; return;
                     }
                     
+ results.totalProfitPercentHorizon = results.totalAcquisitionCost > 0 ? 
+        ((results.totalNetCashflowOverHorizon + results.finalNetGainAtHorizon) / results.totalAcquisitionCost) * 100 : 0;
+
                     const currentFormEls = formElements[currentInvestmentType];
                     const newSimData = {};
                     for (const key of Object.keys(currentFormEls)) {
