@@ -1064,12 +1064,12 @@
             });
         }
 
-        function calculateFinancials(params) {
+function calculateFinancials(params) {
     const {
         negotiatedPurchasePrice, totalAcquisitionCost, personalContribution,
         loanRate, loanDuration, loanInsuranceRate, appreciationRate, rentIncreaseRate, chargesIncreaseRate,
         taxRegime, tmi, getAnnualIncome, getInitialCharges, getManagementFees, initialRents,
-        investmentHorizon // NOUVEAU paramètre
+        investmentHorizon
     } = params;
 
     const totalLoanAmount = totalAcquisitionCost > personalContribution ? totalAcquisitionCost - personalContribution : 0;
@@ -1088,7 +1088,7 @@
     let currentAnnualPropertyTax = initialCharges.propertyTax;
     let currentRents = { ...initialRents };
 
-    // MODIFIÉ : Variables pour les bilans
+    // DÉCLARATION INITIALE
     let totalNetCashflowOverLoanTerm = 0;
     let totalNetCashflowOverHorizon = 0;
     let finalNetGainAtLoanEnd = 0;
@@ -1096,7 +1096,7 @@
     let evolution = [];
     let remainingCapital = totalLoanAmount;
 
-    // MODIFIÉ : La boucle utilise maintenant l'horizon maximal (30 ans) pour générer les tables complètes
+    // La boucle génère les données pour le tableau
     for (let year = 1; year <= 30; year++) {
         const annualIncome = getAnnualIncome(year, currentRents);
         const annualManagementFees = getManagementFees ? getManagementFees(annualIncome) : 0;
@@ -1119,7 +1119,6 @@
         const annualGrossCashflow = annualIncome - paymentForYear - annualTotalCharges;
         const annualNetCashflow = annualGrossCashflow - annualTax;
 
-        // NOUVEAU : Logique de cumul flexible
         if (year <= loanDuration) {
             totalNetCashflowOverLoanTerm += annualNetCashflow;
         }
@@ -1130,9 +1129,13 @@
         const lotValue = negotiatedPurchasePrice * Math.pow(1 + (appreciationRate / 100), year);
         const { netGain } = calculateCapitalGainsTax(lotValue - negotiatedPurchasePrice, year);
         
-        // NOUVEAU : Capture de la plus-value aux moments clés
-        if(year === loanDuration) finalNetGainAtLoanEnd = netGain;
-        if(year === investmentHorizon) finalNetGainAtHorizon = netGain;
+        // POINT CRUCIAL : C'est ici que les valeurs pour le bilan sont capturées
+        if(year === loanDuration) {
+            finalNetGainAtLoanEnd = netGain;
+        }
+        if(year === investmentHorizon) {
+            finalNetGainAtHorizon = netGain;
+        }
 
         evolution.push({ year, annualIncome, annualGrossCashflow, annualTax, annualNetCashflow, lotValue, netGain });
         
@@ -1151,13 +1154,13 @@
     const monthlyTaxY1 = y1.annualTax / 12;
     const monthlyNetCashflowY1 = monthlyIncomeY1 - monthlyExpensesY1 - monthlyTaxY1;
 
-    // MODIFIÉ : Le retour inclut les nouvelles valeurs pour le bilan flexible
+    // RETOUR FINAL - Les variables capturées sont bien retournées ici
     return {
         totalAcquisitionCost, totalLoanAmount, totalMonthlyPayment,
         monthlyIncomeY1, monthlyExpensesY1, monthlyTaxY1, monthlyNetCashflowY1,
-        loanDuration, negotiatedPurchasePrice, investmentHorizon, // NOUVEAU
-        totalNetCashflowOverLoanTerm, totalNetCashflowOverHorizon, // NOUVEAU
-        finalNetGainAtLoanEnd, finalNetGainAtHorizon, evolution // NOUVEAU
+        loanDuration, negotiatedPurchasePrice, investmentHorizon,
+        totalNetCashflowOverLoanTerm, totalNetCashflowOverHorizon,
+        finalNetGainAtLoanEnd, finalNetGainAtHorizon, evolution
     };
 }
         
