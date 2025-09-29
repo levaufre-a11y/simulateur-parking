@@ -1130,7 +1130,7 @@ function calculateFinancials(params) {
         const { netGain } = calculateCapitalGainsTax(lotValue - negotiatedPurchasePrice, year);
         
         // POINT CRUCIAL : C'est ici que les valeurs pour le bilan sont capturées
-        if(year === loanDuration) {
+        if(year === parseInt(loanDuration, 10)) {
             finalNetGainAtLoanEnd = netGain;
         }
         if(year === investmentHorizon) {
@@ -1319,8 +1319,7 @@ function displayResults(results) {
 
     // Final Balance
     const totalProfitEurosLoanEnd = results.totalNetCashflowOverLoanTerm + results.finalNetGainAtLoanEnd;
-    const totalProfitPercentLoanEnd = results.totalAcquisitionCost > 0 ? (totalProfitEurosLoanEnd / results.totalAcquisitionCost) * 100 : 0;
-    document.getElementById('final-balance-title').textContent = `Bilan Final de l'Opération (Vente à ${results.loanDuration} ans)`;
+results.totalProfitPercentHorizon = results.totalAcquisitionCost > 0 ? ((results.totalNetCashflowOverHorizon + results.finalNetGainAtHorizon) / results.totalAcquisitionCost) * 100 : 0;    document.getElementById('final-balance-title').textContent = `Bilan Final de l'Opération (Vente à ${results.loanDuration} ans)`;
     document.getElementById('total-cashflow').textContent = formatCurrency(results.totalNetCashflowOverLoanTerm);
     document.getElementById('final-net-gain').textContent = formatCurrency(results.finalNetGainAtLoanEnd);
     document.getElementById('total-profit-euros').textContent = formatCurrency(totalProfitEurosLoanEnd);
