@@ -1326,7 +1326,7 @@ function displayResults(results) {
     document.getElementById('total-profit-euros').textContent = formatCurrency(totalProfitEurosLoanEnd);
     document.getElementById('total-profit-percent').textContent = formatPercent(totalProfitPercentLoanEnd);
     
-const horizon = sim.data.investmentHorizon || sim.results.loanDuration; // Fallback sur la durée du prêt
+const horizon = results.investmentHorizon || results.loanDuration; // Fallback sur la durée du prêt
     const totalProfitEurosHorizon = results.totalNetCashflowOverHorizon + results.finalNetGainAtHorizon;
     const totalProfitPercentHorizon = results.totalAcquisitionCost > 0 ? (totalProfitEurosHorizon / results.totalAcquisitionCost) * 100 : 0;
 
@@ -1373,6 +1373,8 @@ document.getElementById('final-balance-title-30').textContent = `Bilan Final de 
                 if (!sim.results || !sim.data) return;
                 const cashflowClass = sim.results.monthlyNetCashflowY1 >= 0 ? 'text-green-600' : 'text-red-600';
 		const profitPercentClass = sim.results.totalProfitPercentHorizon >= 0 ? 'text-blue-600' : 'text-red-600';
+    const horizon = sim.data.investmentHorizon || sim.results.loanDuration; // Fallback sur la durée du prêt
+
                 let linkHTML = '';
                 const announcementLink = sim.data.announcementLink;
                 if (announcementLink) {
@@ -1401,28 +1403,35 @@ card.innerHTML = `
             });
         };
 
-        const renderTopInvestments = (sims) => {
-            const topListEl = document.getElementById('top-investments-list');
-            const messageEl = document.getElementById('not-enough-simulations-message');
-            topListEl.innerHTML = '';
-            if (sims.length === 0) {
-                messageEl.style.display = 'block'; topListEl.style.display = 'none'; return;
-            }
-            messageEl.style.display = 'none'; topListEl.style.display = 'grid';
-            
-            const sortedSims = [...sims].filter(s => s.results && s.results.totalProfitPercent30Years !== undefined).sort((a, b) => b.results.totalProfitPercent30Years - a.results.totalProfitPercent30Years);
-            const topSims = sortedSims.slice(0, 3);
-            const medals = ['🥇', '🥈', '🥉'];
+const renderTopInvestments = (sims) => {
+    const topListEl = document.getElementById('top-investments-list');
+    const messageEl = document.getElementById('not-enough-simulations-message');
+    topListEl.innerHTML = '';
+    if (sims.length === 0) {
+        messageEl.style.display = 'block'; topListEl.style.display = 'none'; return;
+    }
+    messageEl.style.display = 'none'; topListEl.style.display = 'grid';
+    
+    // CORRECTION : Utilise 'totalProfitPercentHorizon' pour le filtre et le tri
+    const sortedSims = [...sims]
+        .filter(s => s.results && s.results.totalProfitPercentHorizon !== undefined)
+        .sort((a, b) => (b.results.totalProfitPercentHorizon || 0) - (a.results.totalProfitPercentHorizon || 0));
 
-            topSims.forEach((sim, index) => {
-                const profitPercentClass = sim.results.totalProfitPercent30Years >= 0 ? 'text-blue-600' : 'text-red-600';
-                const card = document.createElement('div');
-                card.className = "bg-white p-5 rounded-xl shadow-lg border-2 border-amber-300";
-                card.innerHTML = `<h3 class="font-bold text-lg text-slate-800 truncate">${medals[index]} ${sim.data.title}</h3><div class="mt-3 space-y-2 text-sm"><p class="flex justify-between"><span>Bénéfice % (30 ans):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercent30Years)}</span></p><p class="flex justify-between"><span>Investissement:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p></div>`;
-                topListEl.appendChild(card);
-            });
-        };
+    const topSims = sortedSims.slice(0, 3);
+    const medals = ['🥇', '🥈', '🥉'];
 
+    topSims.forEach((sim, index) => {
+        // CORRECTION : Utilise 'totalProfitPercentHorizon' pour la classe CSS
+        const profitPercentClass = sim.results.totalProfitPercentHorizon >= 0 ? 'text-blue-600' : 'text-red-600';
+        
+        // CORRECTION : Rend le texte dynamique avec la variable 'horizon'
+        const horizon = sim.data.investmentHorizon || sim.results.loanDuration;
+        const card = document.createElement('div');
+        card.className = "bg-white p-5 rounded-xl shadow-lg border-2 border-amber-300";
+        card.innerHTML = `<h3 class="font-bold text-lg text-slate-800 truncate">${medals[index]} ${sim.data.title}</h3><div class="mt-3 space-y-2 text-sm"><p class="flex justify-between"><span>Bénéfice % (${horizon}a):</span> <span class="font-semibold ${profitPercentClass}">${formatPercent(sim.results.totalProfitPercentHorizon)}</span></p><p class="flex justify-between"><span>Investissement:</span> <span class="font-semibold text-slate-700">${formatCurrency(sim.results.totalAcquisitionCost)}</span></p></div>`;
+        topListEl.appendChild(card);
+    });
+};
         function listenToSimulations() {
             if (unsubscribeSimulations) unsubscribeSimulations();
             if (!currentUser) return;
