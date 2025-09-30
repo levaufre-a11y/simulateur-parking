@@ -1323,7 +1323,12 @@ function displayResults(results) {
 
     // Final Balance
     const totalProfitEurosLoanEnd = results.totalNetCashflowOverLoanTerm + results.finalNetGainAtLoanEnd;
+    const totalProfitPercentLoanEnd = results.totalAcquisitionCost > 0 ? (totalProfitEurosLoanEnd / results.totalAcquisitionCost) * 100 : 0;
+
 results.totalProfitPercentHorizon = results.totalAcquisitionCost > 0 ? ((results.totalNetCashflowOverHorizon + results.finalNetGainAtHorizon) / results.totalAcquisitionCost) * 100 : 0;    document.getElementById('final-balance-title').textContent = `Bilan Final de l'Opération (Vente à ${results.loanDuration} ans)`;
+
+
+    document.getElementById('final-balance-title').textContent = `Bilan Final de l'Opération (Vente à ${results.loanDuration} ans)`;
     document.getElementById('total-cashflow').textContent = formatCurrency(results.totalNetCashflowOverLoanTerm);
     document.getElementById('final-net-gain').textContent = formatCurrency(results.finalNetGainAtLoanEnd);
     document.getElementById('total-profit-euros').textContent = formatCurrency(totalProfitEurosLoanEnd);
